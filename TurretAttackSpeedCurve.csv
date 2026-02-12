@@ -1,0 +1,11 @@
+Tier,MaxHeat (Layers),Stack Multiplier,Max Attack Speed (Shots/Sec),Notes
+0,0,1.0x,1.0,Baseline (100%)
+1,30,3.25x,3.25,Increase starts
+2,60,5.5x,5.5,Mid-tier
+3,90,7.75x,7.75,High-tier
+4,120,10.0x,10.0,Max Cap (1000%)
+
+Formulas:
+Multiplier = 1.0 + (Heat * 0.075)
+MaxHeat = Tier * 30
+Decay = 20% per second after 5s idle

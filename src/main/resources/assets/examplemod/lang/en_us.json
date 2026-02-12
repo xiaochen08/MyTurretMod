@@ -1,0 +1,13 @@
+{
+  "item.examplemod.turret_wand": "Doom Turret Wand",
+  "entity.examplemod.skeleton_turret": "Doom Turret",
+  "itemGroup.examplemod": "Doom Turret Mod",
+  "item.examplemod.death_record_card": "Death Record Card",
+  "item.examplemod.teleport_upgrade_module": "Teleport Upgrade Module",
+  "item.examplemod.teleport_upgrade_module.desc": "§7Upgrade module for Doom Turret",
+  "item.examplemod.teleport_upgrade_module.usage": "§eRight-click on Turret to install",
+  "message.examplemod.module_installed": "§aTeleport Module installed on %s",
+  "message.examplemod.module_already_installed": "§cTeleport Module already installed on %s",
+  "message.examplemod.teleport_module_missing": "§cTeleport Module not installed, cannot execute teleport",
+  "gui.examplemod.range_label": "🏹 Effective Range: %s m"
+}

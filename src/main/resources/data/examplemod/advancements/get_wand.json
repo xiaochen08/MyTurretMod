@@ -1,0 +1,37 @@
+{
+  "display": {
+    "icon": {
+      "item": "examplemod:turret_wand"
+    },
+    "title": {
+      "translate": "advancement.examplemod.get_wand.title"
+    },
+    "description": {
+      "translate": "advancement.examplemod.get_wand.desc"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false,
+    "background": "minecraft:textures/gui/advancements/backgrounds/end.png"
+  },
+  "criteria": {
+    "has_wand": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "examplemod:turret_wand"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_wand"
+    ]
+  ]
+}

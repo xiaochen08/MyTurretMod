@@ -1,0 +1,22 @@
+{
+  "print_loop": {
+    "category": "block",
+    "subtitle": "subtitles.examplemod.print_loop",
+    "sounds": [ "examplemod:print_loop" ]
+  },
+  "print_complete": {
+    "category": "block",
+    "subtitle": "subtitles.examplemod.print_complete",
+    "sounds": [ "examplemod:print_complete" ]
+  },
+  "print_error": {
+    "category": "block",
+    "subtitle": "subtitles.examplemod.print_error",
+    "sounds": [ "examplemod:print_error" ]
+  },
+  "print_explode": {
+    "category": "block",
+    "subtitle": "subtitles.examplemod.print_explode",
+    "sounds": [ "examplemod:print_explode" ]
+  }
+}

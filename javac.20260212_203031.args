@@ -1,0 +1,5 @@
+-encoding
+UTF-8
+-cp
+src\\main\\java
+src\\main\\java\\com\\example\\examplemod\\SkeletonTurret.java

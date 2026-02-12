@@ -1,0 +1,15 @@
+{
+  "item.examplemod.turret_wand": "毁灭守望者法杖",
+  "entity.examplemod.skeleton_turret": "毁灭·守望者",
+  "itemGroup.examplemod": "毁灭守望者模组",
+  "item.examplemod.death_record_card": "死亡记录卡",
+  "advancement.examplemod.get_wand.title": "终焉·第零号协议",
+  "advancement.examplemod.get_wand.desc": "获得毁灭守望者法杖。既然握住了权柄，就让弹雨淹没一切吧。",
+  "item.examplemod.teleport_upgrade_module": "传送升级模块",
+  "item.examplemod.teleport_upgrade_module.desc": "§7毁灭守望者专用升级模块",
+  "item.examplemod.teleport_upgrade_module.usage": "§e右键点击炮台以安装",
+  "message.examplemod.module_installed": "§a已为 %s 安装传送模块",
+  "message.examplemod.module_already_installed": "§c%s 已安装传送模块，无需重复安装",
+  "message.examplemod.teleport_module_missing": "§c未安装传送模块，无法执行传送",
+  "gui.examplemod.range_label": "🏹 有效射程: %s 米"
+}

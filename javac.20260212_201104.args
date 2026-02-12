@@ -1,0 +1,5 @@
+-encoding
+UTF-8
+-cp
+src\\main\\java
+src\\test\\java\\com\\example\\examplemod\\TurretDropLogicTest.java

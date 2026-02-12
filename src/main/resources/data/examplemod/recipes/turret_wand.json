@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " R ",
+    " O ",
+    " I "
+  ],
+  "key": {
+    "R": { "item": "minecraft:rotten_flesh" },
+    "O": { "item": "minecraft:obsidian" },
+    "I": { "item": "minecraft:iron_block" }
+  },
+  "result": {
+    "item": "examplemod:turret_wand",
+    "count": 1
+  }
+}

@@ -1,0 +1,138 @@
+buildscript {
+    repositories {
+        // 1. 优先使用阿里云镜像
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+
+        // 2. Forge 和 Minecraft 官方仓库
+        maven { url 'https://maven.minecraftforge.net' }
+
+        // 3. ✅ Parchment 仓库 (插件在这儿下载)
+        maven { url 'https://maven.parchmentmc.org' }
+
+    }
+    dependencies {
+        // 下载 ForgeGradle
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+'
+
+        // ✅ 下载 Librarian 插件 (用于解析 parchment 映射)
+        classpath 'org.parchmentmc:librarian:1.+'
+
+    }
+}
+
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+
+    // ❌ 重点：千万不要在这里写 parchment！
+    // ❌ id 'org.parchmentmc.librarian.forgegradle' version '1.+'  <-- 删掉这行，或者确保这里没有它
+}
+
+// ✅ 重点：在这里手动启用插件
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
+apply plugin: 'net.minecraftforge.gradle' // ✅ 放在这里 apply
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+
+// 下面是你的版本号配置，保持不变...
+version = '1.0.0'
+group = 'com.example.examplemod'
+// ...
+
+version = '1.0.0'
+group = 'com.example.examplemod'
+base {
+    archivesName = 'examplemod'
+}
+
+// 强制使用 Java 17
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+minecraft {
+    // ✅ 2. 依然使用 snapshot (GeckoLib 最爱)，配合阿里云下载
+    //mappings channel: 'official', version: '1.20.1'
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
+
+
+    copyIdeResources = true
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            // ✅ 关键：确保 GeckoLib 这种带有 Mixin 的模组能正常加载
+            property 'forge.enabledGameTestNamespaces', 'examplemod'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+
+            mods {
+                examplemod {
+                    source sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                examplemod {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    // ✅ 3. 项目依赖也加上国内镜像
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    maven { url 'https://maven.aliyun.com/repository/central' }
+    maven { name = 'forge'; url = 'https://maven.minecraftforge.net' }
+
+    maven { url 'https://maven.parchmentmc.org' }
+}
+
+dependencies {
+    // 使用稳定版 Forge
+
+    minecraft 'net.minecraftforge:forge:1.20.1-47.1.3'
+
+
+
+
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// 这段代码负责把 gradle 中的变量注入到 mods.toml 中
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version   : "1.20.1",
+            minecraft_version_range: "[1.20.1, 1.21)",
+            forge_version       : "47.1.3",
+            forge_version_range : "[47,)",
+            loader_version_range: "[47,)",
+            mod_id              : "examplemod", // ✅ 确保这里定义了 mod_id
+            mod_name            : "My Turret Mod",
+            mod_license         : "MIT",
+            mod_version         : project.version,
+            mod_authors         : "YourName",
+            mod_description     : "Smart Golem mod."
+    ]
+
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}
