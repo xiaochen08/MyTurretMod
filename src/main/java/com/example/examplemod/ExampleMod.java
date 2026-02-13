@@ -91,7 +91,6 @@ public class ExampleMod {
     public static final RegistryObject<Item> TURRET_WAND = ITEMS.register("turret_wand", () -> new TurretItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GLITCH_CHIP = ITEMS.register("glitch_chip", () -> new GlitchChipItem(new Item.Properties().stacksTo(64)));
     public static final RegistryObject<Item> TELEPORT_UPGRADE_MODULE = ITEMS.register("teleport_upgrade_module", () -> new TeleportUpgradeItem(new Item.Properties().stacksTo(64)));
-    public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
     
     public static final RegistryObject<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> ADD_ENDER_PEARL = LOOT_MODIFIERS.register("add_ender_pearl", EnderPearlLootModifier.CODEC);
 
@@ -147,7 +146,6 @@ public class ExampleMod {
             event.accept(TURRET_WAND);
             event.accept(GLITCH_CHIP);
             event.accept(TELEPORT_UPGRADE_MODULE);
-            event.accept(DEATH_RECORD_ITEM);
         }
     }
 
