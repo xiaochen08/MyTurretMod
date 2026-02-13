@@ -90,7 +90,6 @@ public class ExampleMod {
     public static final RegistryObject<Item> TURRET_WAND = ITEMS.register("turret_wand", () -> new TurretItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GLITCH_CHIP = ITEMS.register("glitch_chip", () -> new GlitchChipItem(new Item.Properties().stacksTo(64)));
     public static final RegistryObject<Item> TELEPORT_UPGRADE_MODULE = ITEMS.register("teleport_upgrade_module", () -> new TeleportUpgradeItem(new Item.Properties().stacksTo(64)));
-    public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
     
     public static final RegistryObject<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> ADD_ENDER_PEARL = LOOT_MODIFIERS.register("add_ender_pearl", EnderPearlLootModifier.CODEC);
 
@@ -146,7 +145,6 @@ public class ExampleMod {
             event.accept(TURRET_WAND);
             event.accept(GLITCH_CHIP);
             event.accept(TELEPORT_UPGRADE_MODULE);
-            event.accept(DEATH_RECORD_ITEM);
         }
     }
 
@@ -158,61 +156,6 @@ public class ExampleMod {
     public void onLivingDrops(LivingDropsEvent event) {
         if (event.getEntity().level().isClientSide) return;
         
-        // 1. SkeletonTurret Death Record Drop (100% chance, Configurable)
-        if (event.getEntity() instanceof SkeletonTurret turret) {
-            DamageSource source = event.getSource();
-            LOGGER.info("[DropSystem] Processing drops for SkeletonTurret #{}. Source: {}, Y-Pos: {}", 
-                turret.getEntityData().get(SkeletonTurret.UNIT_ID), 
-                source.getMsgId(),
-                turret.getY());
-
-            // Check if already dropped (Idempotency)
-            if (turret.hasDroppedRecord()) {
-                LOGGER.info("[DropSystem] ⚠ Death Record already dropped for Turret #{}, skipping.", turret.getEntityData().get(SkeletonTurret.UNIT_ID));
-                return;
-            }
-            
-            // Fall Death Capture Check
-            if (TurretConfig.COMMON.enableFallDeathCapture.get()) {
-                boolean isFall = source.is(net.minecraft.world.damagesource.DamageTypes.FALL) || 
-                                 source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD);
-                
-                if (isFall) {
-                    double fallDistance = turret.fallDistance;
-                    double threshold = TurretConfig.COMMON.fallDeathHeightThreshold.get();
-                    LOGGER.info("[DropSystem] Fall Death Detected. Distance: {}, Threshold: {}", fallDistance, threshold);
-                }
-            }
-
-            if (TurretConfig.COMMON.enableDeathRecordDrop.get()) {
-                int usedDrops = turret.getEntityData().get(SkeletonTurret.DROP_COUNT);
-                if (usedDrops >= 2) {
-                    LOGGER.info("[DropSystem] Drop limit reached for Turret #{} (count={}), skipping record drop.",
-                        turret.getEntityData().get(SkeletonTurret.UNIT_ID), usedDrops);
-                    return;
-                }
-
-                LOGGER.info("[DropSystem] Death Record Drop ENABLED. Generating...");
-                ItemStack record = turret.createDeathRecordCard(usedDrops + 1);
-                if (!record.isEmpty()) {
-                    // Add to drops
-                    event.getDrops().add(new ItemEntity(
-                        turret.level(), 
-                        turret.getX(), turret.getY() + 0.5, turret.getZ(), 
-                        record
-                    ));
-                    turret.setDroppedRecord(true); // Mark as dropped
-                    LOGGER.info("[DropSystem] ✅ Death Record dropped successfully at ({}, {}, {})", turret.getX(), turret.getY(), turret.getZ());
-                } else {
-                    LOGGER.error("[DropSystem] ❌ Failed to create record card.");
-                }
-            } else {
-                LOGGER.info("[DropSystem] Death Record Drop DISABLED by config.");
-            }
-            // Turrets don't drop pearls
-            return; 
-        }
-
         // 5%-15% chance for hostile mobs to drop Ender Pearls (Configurable)
         if (event.getEntity() instanceof Monster) {
             // Get values from config
