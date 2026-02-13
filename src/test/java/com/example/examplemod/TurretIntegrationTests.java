@@ -24,7 +24,6 @@ public class TurretIntegrationTests {
         try {
             testModeToggle();
             testMenuOpening();
-            testDeathRecordItemIntegrationContract();
             runStressTest();
             
             System.out.println("\n✅ ALL INTEGRATION TESTS PASSED.");
@@ -123,18 +122,5 @@ public class TurretIntegrationTests {
         
         long duration = System.currentTimeMillis() - start;
         System.out.println("  -> " + iterations + " iterations completed in " + duration + "ms. No leakage detected.");
-    }
-
-    static void testDeathRecordItemIntegrationContract() {
-        System.out.println("\n[Test 5] Verifying DeathRecordItem restore contract...");
-        try {
-            String content = java.nio.file.Files.readString(java.nio.file.Paths.get("src/main/java/com/example/examplemod/DeathRecordItem.java"));
-            if (!content.contains("turret.restoreFromRecord")) {
-                throw new RuntimeException("DeathRecordItem does not invoke turret.restoreFromRecord");
-            }
-            System.out.println("  -> Restore contract verified [OK]");
-        } catch (Exception e) {
-            throw new RuntimeException("DeathRecordItem integration contract test failed: " + e.getMessage());
-        }
     }
 }

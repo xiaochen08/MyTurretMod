@@ -14,7 +14,6 @@ public class TurretDialogue {
     public enum Type {
         RECOVER_FULL(5000),
         LOW_HP(5000),
-        DYING(5000),
         REPAIR(2000),
         ENCHANT(2000),
         BERSERK(5000),
@@ -69,23 +68,6 @@ public class TurretDialogue {
             "我看不到你了，指挥官...", "我不行了... 拉我一把...", "这不公平...",
             "妈妈... 我好怕...", "别让苦力怕靠近我！", "我不想变成骨粉...",
             "谁来... 帮帮我...", "我听到了死神的脚步声..."
-    };
-
-    private static final String[] QUOTES_DYING = {
-            "为了联邦！！", "妈妈... 我好像听见下课铃声了...", "指挥官... 我尽力了...",
-            "再见了... 我的朋友...", "不要为我难过...", "我先走一步...",
-            "告诉他们... 我没有逃跑...", "这是一场... 精彩的战斗...", "我... 无悔...",
-            "把我埋在... 向日葵下面...", "来生... 我想做个村民...", "替我... 活下去...",
-            "别让我的弓生锈...", "我... 自由了...", "这就是... 终点吗...",
-            "谢谢你... 赋予我生命...", "我... 还会回来的... 也许...", "别忘了... 我的编号...",
-            "这世界... 真美...", "终于... 可以休息了...",
-            "快按 Shift！快按右键！", "你忘了怎么修我了吗？！", "别发呆了！我有救！",
-            "系统停机... 等待手动重启...", "倒计时开始... 10... 9...", "严重错误！请联系管理员...",
-            "拿个铁砧过来！", "我不甘心！救我！", "别把我留在这里！",
-            "我还能抢救一下！", "别放弃我！", "快点！趁我还没凉透！",
-            "只需要一点点修理！", "别吝啬你的材料！", "我还不想死！",
-            "重新启动！快！", "手动模式！快切手动！", "嘿！别走啊！",
-            "我觉得我还能再活五百集！", "别让我变成掉落物！"
     };
 
     private static final String[] QUOTES_REPAIR = {
@@ -204,7 +186,7 @@ public class TurretDialogue {
             if (timeQuote != null) text = timeQuote;
         }
 
-        boolean isGlitch = (type == Type.BERSERK || type == Type.DYING);
+        boolean isGlitch = (type == Type.BERSERK);
         String id = String.valueOf(turret.getEntityData().get(SkeletonTurret.UNIT_ID));
 
         doSpeak(turret, text, isGlitch, id);
@@ -214,7 +196,6 @@ public class TurretDialogue {
         String[] pool = switch (type) {
             case RECOVER_FULL -> QUOTES_RECOVER_FULL;
             case LOW_HP -> QUOTES_LOW_HP;
-            case DYING -> QUOTES_DYING;
             case REPAIR -> QUOTES_REPAIR;
             case ENCHANT -> QUOTES_ENCHANT;
             case BERSERK -> QUOTES_BERSERK;
