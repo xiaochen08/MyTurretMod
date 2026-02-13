@@ -84,6 +84,10 @@ public class ExampleMod {
     static final int TURRET_TP_PERMISSION_LEVEL = 2;
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "examplemod");
+
+
+
+
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "examplemod");
     public static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, "examplemod");
     public static final DeferredRegister<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> LOOT_MODIFIERS = DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, "examplemod");
@@ -108,7 +112,13 @@ public class ExampleMod {
             "§f你的护盾已抵达战场！", "§f撑住，别闭上眼睛！", "§f清除路障，救援行动开始！",
             "§f稍微忍耐一下，马上就好！", "§f我在，我在！不要放弃希望！", "§f正在执行最高优先级救援指令！",
             "§f只要我还在，你就不会死！", "§f不用担心，我会带你回家！", "§f看来你需要一点帮助，长官！"
+
+
+
     };
+
+
+
 
     public static final GameProfile TURRET_FAKE_PLAYER_PROFILE = new GameProfile(UUID.fromString("c06f8906-4c8a-4d11-9c3c-09d6c352723c"), "[Turret]");
 
