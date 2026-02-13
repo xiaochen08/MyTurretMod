@@ -15,7 +15,6 @@ public class TurretLogicTest {
             testDropProbability();
             testCaptainScore();
             testCommandPermissionLevel();
-            testDeathRecordItemTagGuard();
             
             System.out.println("\n✅ ALL LOGIC TESTS PASSED.");
         } catch (Exception e) {
@@ -77,22 +76,6 @@ public class TurretLogicTest {
             System.out.println("  -> Command permission level verified [OK]");
         } catch (Exception e) {
             throw new RuntimeException("Permission level test failed: " + e.getMessage());
-        }
-    }
-
-    static void testDeathRecordItemTagGuard() {
-        System.out.println("\n[Test 5] Verifying DeathRecordItem tag guard...");
-        try {
-            String content = Files.readString(Paths.get("src/main/java/com/example/examplemod/DeathRecordItem.java"));
-            if (!content.contains("CompoundTag tag = stack.getTag();")) {
-                throw new RuntimeException("Missing local tag guard in isFoil");
-            }
-            if (!content.contains("tag != null && tag.contains(\"Version\")")) {
-                throw new RuntimeException("Missing null-safe tag check in isFoil");
-            }
-            System.out.println("  -> DeathRecordItem tag guard verified [OK]");
-        } catch (Exception e) {
-            throw new RuntimeException("DeathRecordItem tag guard test failed: " + e.getMessage());
         }
     }
 }

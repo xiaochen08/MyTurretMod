@@ -2,7 +2,6 @@
   "item.examplemod.turret_wand": "毁灭守望者法杖",
   "entity.examplemod.skeleton_turret": "毁灭·守望者",
   "itemGroup.examplemod": "毁灭守望者模组",
-  "item.examplemod.death_record_card": "死亡记录卡",
   "advancement.examplemod.get_wand.title": "终焉·第零号协议",
   "advancement.examplemod.get_wand.desc": "获得毁灭守望者法杖。既然握住了权柄，就让弹雨淹没一切吧。",
   "item.examplemod.teleport_upgrade_module": "传送升级模块",
