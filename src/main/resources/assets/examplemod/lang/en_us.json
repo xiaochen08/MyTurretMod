@@ -8,5 +8,7 @@
   "message.examplemod.module_installed": "§aTeleport Module installed on %s",
   "message.examplemod.module_already_installed": "§cTeleport Module already installed on %s",
   "message.examplemod.teleport_module_missing": "§cTeleport Module not installed, cannot execute teleport",
-  "gui.examplemod.range_label": "🏹 Effective Range: %s m"
+  "gui.examplemod.range_label": "🏹 Effective Range: %s m",
+  "item.examplemod.death_record_card": "ID Plaque #xxx",
+  "item.examplemod.death_record_card.desc": "Stores full pre-death turret snapshot (except squad/follow-group metadata)"
 }

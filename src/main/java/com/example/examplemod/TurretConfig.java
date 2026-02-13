@@ -20,6 +20,9 @@ public class TurretConfig {
 
         public final ForgeConfigSpec.DoubleValue enderPearlDropChanceBase;
         public final ForgeConfigSpec.DoubleValue enderPearlDropChanceBonus;
+        public final ForgeConfigSpec.DoubleValue deathPlaqueDropChance;
+        public final ForgeConfigSpec.BooleanValue enableDeathPlaqueGc;
+        public final ForgeConfigSpec.IntValue deathPlaqueItemTtlSeconds;
 
         public Common(ForgeConfigSpec.Builder builder) {
             builder.push("TeleportModule");
@@ -44,6 +47,18 @@ public class TurretConfig {
             enderPearlDropChanceBonus = builder
                     .comment("Max random bonus chance for Ender Pearl drops (0.0 - 1.0, default: 0.10 = 10%)")
                     .defineInRange("enderPearlDropChanceBonus", 0.10, 0.0, 1.0);
+
+            deathPlaqueDropChance = builder
+                    .comment("Chance for SkeletonTurret to drop death plaque on fatal damage for first two deaths")
+                    .defineInRange("deathPlaqueDropChance", 0.65, 0.0, 1.0);
+
+            enableDeathPlaqueGc = builder
+                    .comment("Enable server-side GC for dropped death plaque item entities")
+                    .define("enableDeathPlaqueGc", true);
+
+            deathPlaqueItemTtlSeconds = builder
+                    .comment("TTL for dropped death plaque item entities in seconds before cleanup")
+                    .defineInRange("deathPlaqueItemTtlSeconds", 900, 60, 86400);
             builder.pop();
         }
     }

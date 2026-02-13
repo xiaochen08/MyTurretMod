@@ -10,5 +10,7 @@
   "message.examplemod.module_installed": "§a已为 %s 安装传送模块",
   "message.examplemod.module_already_installed": "§c%s 已安装传送模块，无需重复安装",
   "message.examplemod.teleport_module_missing": "§c未安装传送模块，无法执行传送",
-  "gui.examplemod.range_label": "🏹 有效射程: %s 米"
+  "gui.examplemod.range_label": "🏹 有效射程: %s 米",
+  "item.examplemod.death_record_card": "编号#xxx 铭牌",
+  "item.examplemod.death_record_card.desc": "记录骷髅死亡前完整快照（不含跟随队伍信息）"
 }

@@ -12,6 +12,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -155,16 +156,39 @@ public class ExampleMod {
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGH)
     public void onLivingDrops(LivingDropsEvent event) {
         if (event.getEntity().level().isClientSide) return;
-        
+
+        if (event.getEntity() instanceof SkeletonTurret turret) {
+            int fatalCount = turret.getFatalHitCount() + 1;
+            turret.setFatalHitCount(fatalCount);
+
+            if (fatalCount >= 3) {
+                notifyTurretDestroyed(turret);
+                return;
+            }
+
+            if (event.getEntity().getRandom().nextDouble() <= TurretConfig.COMMON.deathPlaqueDropChance.get()) {
+                ItemStack record = new ItemStack(DEATH_RECORD_ITEM.get());
+                CompoundTag tag = DeathPlaqueDataCodec.buildFromTurret(turret, fatalCount);
+                CompoundTag dataTag = tag.getCompound("Data");
+                int unitId = dataTag.getInt("UnitID");
+                record.setTag(tag);
+                record.setHoverName(Component.literal("编号#" + unitId + " 铭牌"));
+
+                double x = turret.getX();
+                double y = turret.getY() + 0.4;
+                double z = turret.getZ();
+                event.getDrops().add(new ItemEntity(turret.level(), x, y, z, record));
+                notifyTurretPlaqueDrop(turret, unitId, x, y, z);
+            }
+            return;
+        }
+
         // 5%-15% chance for hostile mobs to drop Ender Pearls (Configurable)
         if (event.getEntity() instanceof Monster) {
-            // Get values from config
             double baseChance = TurretConfig.COMMON.enderPearlDropChanceBase.get();
             double bonusChance = TurretConfig.COMMON.enderPearlDropChanceBonus.get();
-            
-            // Random chance between base and base + bonus
             double chance = baseChance + (event.getEntity().getRandom().nextDouble() * bonusChance);
-            
+
             if (event.getEntity().getRandom().nextDouble() < chance) {
                 event.getDrops().add(new ItemEntity(
                     event.getEntity().level(),
@@ -175,6 +199,27 @@ public class ExampleMod {
                 ));
             }
         }
+    }
+
+    private void notifyTurretPlaqueDrop(SkeletonTurret turret, int unitId, double x, double y, double z) {
+        if (turret.getOwnerUUID() == null || !(turret.level() instanceof ServerLevel serverLevel)) return;
+        ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(turret.getOwnerUUID());
+        if (owner == null) return;
+
+        String cmd = String.format("/skull tpplaque %.2f %.2f %.2f", x, y, z);
+        Component clickable = Component.literal("[点击传送]")
+                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.AQUA)
+                        .withUnderlined(true)
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd)));
+
+        owner.sendSystemMessage(Component.literal("编号#" + unitId + " 受到致命伤害 已阵亡 ").append(clickable).append(Component.literal(" 拾取死亡铭牌")));
+    }
+
+    private void notifyTurretDestroyed(SkeletonTurret turret) {
+        if (turret.getOwnerUUID() == null || !(turret.level() instanceof ServerLevel serverLevel)) return;
+        ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(turret.getOwnerUUID());
+        if (owner == null) return;
+        owner.sendSystemMessage(Component.literal("编号#" + turret.getEntityData().get(SkeletonTurret.UNIT_ID) + " 已确认销毁！"));
     }
 
     @SubscribeEvent
@@ -1018,6 +1063,18 @@ public class ExampleMod {
             for (Entity e : toRemove) {
                 level.sendParticles(ParticleTypes.BUBBLE, e.getX(), e.getY(), e.getZ(), 1, 0, 0, 0, 0.1);
                 e.discard();
+            }
+        }
+
+        // [Part C] 死亡铭牌垃圾回收 (每30秒)
+        if (event.level.getGameTime() % 600 == 0 && event.level instanceof ServerLevel level && TurretConfig.COMMON.enableDeathPlaqueGc.get()) {
+            long ttlTicks = TurretConfig.COMMON.deathPlaqueItemTtlSeconds.get() * 20L;
+            for (Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof ItemEntity itemEntity)) continue;
+                ItemStack stack = itemEntity.getItem();
+                if (!stack.is(DEATH_RECORD_ITEM.get())) continue;
+                if (itemEntity.tickCount < ttlTicks) continue;
+                itemEntity.discard();
             }
         }
     }

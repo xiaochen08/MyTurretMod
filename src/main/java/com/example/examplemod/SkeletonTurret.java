@@ -85,6 +85,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private static final EntityDataAccessor<Boolean> IS_SCAVENGING = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
     // ✅ 新增：身份编号 (001-999)
     public static final EntityDataAccessor<Integer> UNIT_ID = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DEATH_PLAQUE_FATAL_HIT_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     // RANGE_LEVEL removed - derived from TIER
 
     // ==================== 🗣️ 头顶显示系统数据 ====================
@@ -250,6 +251,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.entityData.define(IS_PURGE_ACTIVE, false);
         this.entityData.define(IS_SCAVENGING, false);
         this.entityData.define(UNIT_ID, 0);
+        this.entityData.define(DEATH_PLAQUE_FATAL_HIT_COUNT, 0);
         this.entityData.define(SYNC_BASE_NAME, "先锋队员");
         this.entityData.define(PRINT_PROGRESS, 0.0f);
         this.entityData.define(PRINT_STATE, 0);
@@ -2135,6 +2137,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         tag.putString("CustomBaseName", this.entityData.get(SYNC_BASE_NAME));
         tag.putInt("XpBuffer", this.xpBuffer);
         tag.putInt("UpgradeProgress", this.entityData.get(UPGRADE_PROGRESS));
+        tag.putInt("DeathPlaqueFatalHitCount", this.entityData.get(DEATH_PLAQUE_FATAL_HIT_COUNT));
         tag.putBoolean("IsSquadMember", this.entityData.get(IS_SQUAD_MEMBER));
         // Save Teleport Module Data
         tag.putBoolean("HasTeleportModule", this.hasTeleportModule());
@@ -2201,7 +2204,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (tag.contains("UnitID")) {
             this.entityData.set(UNIT_ID, tag.getInt("UnitID"));
         }
-        if (tag.contains("DropCount")) {
+        if (tag.contains("DeathPlaqueFatalHitCount")) {
+            this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, tag.getInt("DeathPlaqueFatalHitCount"));
+        } else if (tag.contains("DropCount")) {
+            this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, tag.getInt("DropCount"));
         }
         if (tag.contains("CustomBaseName")) {
             this.entityData.set(SYNC_BASE_NAME, tag.getString("CustomBaseName"));
@@ -2769,6 +2775,27 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     // ✅ 补充这个方法，允许外部读取主人UUID
     public UUID getOwnerUUID() {
         return this.ownerUUID;
+    }
+
+    public void setOwner(Player player) {
+        this.ownerUUID = player.getUUID();
+        this.entityData.set(OWNER_UUID_SYNC, Optional.of(this.ownerUUID));
+    }
+
+    public boolean isBrutal() {
+        return this.entityData.get(IS_BRUTAL);
+    }
+
+    public EntityDataAccessor<Integer> getDataXpAccessor() {
+        return DATA_XP;
+    }
+
+    public int getFatalHitCount() {
+        return this.entityData.get(DEATH_PLAQUE_FATAL_HIT_COUNT);
+    }
+
+    public void setFatalHitCount(int count) {
+        this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, Math.max(0, count));
     }
     @javax.annotation.Nullable
     public LivingEntity getOwner() {
