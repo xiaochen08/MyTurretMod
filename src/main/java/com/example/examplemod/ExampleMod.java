@@ -12,7 +12,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -61,6 +60,8 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -74,6 +75,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.world.BossEvent;
+
 
 import net.minecraftforge.fml.config.ModConfig;
 
@@ -84,10 +91,6 @@ public class ExampleMod {
     static final int TURRET_TP_PERMISSION_LEVEL = 2;
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "examplemod");
-
-
-
-
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "examplemod");
     public static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, "examplemod");
     public static final DeferredRegister<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> LOOT_MODIFIERS = DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, "examplemod");
@@ -95,6 +98,8 @@ public class ExampleMod {
     public static final RegistryObject<Item> TURRET_WAND = ITEMS.register("turret_wand", () -> new TurretItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GLITCH_CHIP = ITEMS.register("glitch_chip", () -> new GlitchChipItem(new Item.Properties().stacksTo(64)));
     public static final RegistryObject<Item> TELEPORT_UPGRADE_MODULE = ITEMS.register("teleport_upgrade_module", () -> new TeleportUpgradeItem(new Item.Properties().stacksTo(64)));
+    public static final RegistryObject<Item> MULTI_SHOT_UPGRADE_MODULE = ITEMS.register("multi_shot_upgrade_module", () -> new MultiShotUpgradeModuleItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
     
     public static final RegistryObject<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> ADD_ENDER_PEARL = LOOT_MODIFIERS.register("add_ender_pearl", EnderPearlLootModifier.CODEC);
 
@@ -112,13 +117,7 @@ public class ExampleMod {
             "§f你的护盾已抵达战场！", "§f撑住，别闭上眼睛！", "§f清除路障，救援行动开始！",
             "§f稍微忍耐一下，马上就好！", "§f我在，我在！不要放弃希望！", "§f正在执行最高优先级救援指令！",
             "§f只要我还在，你就不会死！", "§f不用担心，我会带你回家！", "§f看来你需要一点帮助，长官！"
-
-
-
     };
-
-
-
 
     public static final GameProfile TURRET_FAKE_PLAYER_PROFILE = new GameProfile(UUID.fromString("c06f8906-4c8a-4d11-9c3c-09d6c352723c"), "[Turret]");
 
@@ -134,13 +133,72 @@ public class ExampleMod {
         LOOT_MODIFIERS.register(modEventBus);
         modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::addEntityAttributes);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            modEventBus.addListener(ClientModEvents::registerRenderers);
+            modEventBus.addListener(ClientModEvents::registerLayerDefinitions);
+            modEventBus.addListener(ClientModEvents::clientSetup);
+            modEventBus.addListener(ClientModEvents::registerItemColors);
+        }
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(BossBarManager.class); // Register BossBarManager
         LOGGER.info("✅ 炮台模组已加载 - 监控系统启动"); // 启动日志
         PacketHandler.register();
         ModSounds.register(modEventBus);
         // GeckoLib removed
 
 
+    }
+
+    // 修复后的BossBarManager类
+    public static class BossBarManager {
+        private static final Map<UUID, BossBarInfo> activeBars = new ConcurrentHashMap<>();
+
+        private static class BossBarInfo {
+            final ServerBossEvent bar;
+            int remainingTicks;
+            final int initialDuration;
+
+            BossBarInfo(ServerBossEvent bar, int durationTicks) {
+                this.bar = bar;
+                this.remainingTicks = durationTicks;
+                this.initialDuration = durationTicks;
+            }
+        }
+
+        public static void showTemporaryBossBar(ServerPlayer player, Component message, BossEvent.BossBarColor color, BossEvent.BossBarOverlay style, int durationTicks) {
+            if (activeBars.containsKey(player.getUUID())) {
+                BossBarInfo oldInfo = activeBars.remove(player.getUUID());
+                oldInfo.bar.removePlayer(player);
+            }
+
+            ServerBossEvent bossBar = new ServerBossEvent(message, color, style);
+            bossBar.setProgress(1.0f);
+            bossBar.addPlayer(player);
+            activeBars.put(player.getUUID(), new BossBarInfo(bossBar, durationTicks));
+        }
+
+        @SubscribeEvent
+        public static void onServerTick(TickEvent.ServerTickEvent event) {
+            if (event.phase != TickEvent.Phase.END) return;
+
+            Iterator<Map.Entry<UUID, BossBarInfo>> iterator = activeBars.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, BossBarInfo> entry = iterator.next();
+                BossBarInfo info = entry.getValue();
+                info.remainingTicks--;
+
+                float progress = (float) info.remainingTicks / info.initialDuration;
+                info.bar.setProgress(Math.max(0, progress));
+
+                if (info.remainingTicks <= 0) {
+                    ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
+                    if (player != null) {
+                        info.bar.removePlayer(player);
+                    }
+                    iterator.remove();
+                }
+            }
+        }
     }
 
 
@@ -156,6 +214,18 @@ public class ExampleMod {
             event.accept(TURRET_WAND);
             event.accept(GLITCH_CHIP);
             event.accept(TELEPORT_UPGRADE_MODULE);
+            event.accept(MULTI_SHOT_UPGRADE_MODULE);
+            event.accept(DEATH_RECORD_ITEM);
+
+            for (int level = 1; level <= TurretUpgradeTierPlan.maxLevel(); level++) {
+                ItemStack teleportStack = new ItemStack(TELEPORT_UPGRADE_MODULE.get());
+                TeleportUpgradeItem.setLevel(teleportStack, level);
+                event.accept(teleportStack);
+
+                ItemStack multiShotStack = new ItemStack(MULTI_SHOT_UPGRADE_MODULE.get());
+                MultiShotUpgradeModuleItem.setLevel(multiShotStack, level);
+                event.accept(multiShotStack);
+            }
         }
     }
 
@@ -166,39 +236,50 @@ public class ExampleMod {
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGH)
     public void onLivingDrops(LivingDropsEvent event) {
         if (event.getEntity().level().isClientSide) return;
-
+        
+        // 1. SkeletonTurret Death Record Drop (100%, deterministic, exactly one)
         if (event.getEntity() instanceof SkeletonTurret turret) {
-            int fatalCount = turret.getFatalHitCount() + 1;
-            turret.setFatalHitCount(fatalCount);
+            DamageSource source = event.getSource();
+            LOGGER.info("[DropSystem] Processing drops for SkeletonTurret #{}. Source: {}, Y-Pos: {}", 
+                turret.getEntityData().get(SkeletonTurret.UNIT_ID), 
+                source.getMsgId(),
+                turret.getY());
 
-            if (fatalCount >= 3) {
-                notifyTurretDestroyed(turret);
+            // Check if already dropped (Idempotency)
+            if (turret.hasDroppedRecord()) {
+                LOGGER.info("[DropSystem] ⚠ Death Record already dropped for Turret #{}, skipping.", turret.getEntityData().get(SkeletonTurret.UNIT_ID));
                 return;
             }
 
-            if (event.getEntity().getRandom().nextDouble() <= TurretConfig.COMMON.deathPlaqueDropChance.get()) {
-                ItemStack record = new ItemStack(DEATH_RECORD_ITEM.get());
-                CompoundTag tag = DeathPlaqueDataCodec.buildFromTurret(turret, fatalCount);
-                CompoundTag dataTag = tag.getCompound("Data");
-                int unitId = dataTag.getInt("UnitID");
-                record.setTag(tag);
-                record.setHoverName(Component.literal("编号#" + unitId + " 铭牌"));
-
-                double x = turret.getX();
-                double y = turret.getY() + 0.4;
-                double z = turret.getZ();
-                event.getDrops().add(new ItemEntity(turret.level(), x, y, z, record));
-                notifyTurretPlaqueDrop(turret, unitId, x, y, z);
+            // Force exactly one plaque drop at the death position.
+            event.getDrops().clear();
+            ItemStack record = turret.createDeathRecordCard(1);
+            if (record.isEmpty()) {
+                LOGGER.error("[DropSystem] ❌ Failed to create record card.");
+                return;
             }
-            return;
+            record.setCount(1);
+            event.getDrops().add(new ItemEntity(
+                    turret.level(),
+                    turret.getX(), turret.getY(), turret.getZ(),
+                    record
+            ));
+            turret.setDroppedRecord(true);
+            LOGGER.info("[DropSystem] ✅ Forced Death Record drop at ({}, {}, {}), source={}",
+                    turret.getX(), turret.getY(), turret.getZ(), source.getMsgId());
+            // Turrets don't drop pearls
+            return; 
         }
 
         // 5%-15% chance for hostile mobs to drop Ender Pearls (Configurable)
         if (event.getEntity() instanceof Monster) {
+            // Get values from config
             double baseChance = TurretConfig.COMMON.enderPearlDropChanceBase.get();
             double bonusChance = TurretConfig.COMMON.enderPearlDropChanceBonus.get();
+            
+            // Random chance between base and base + bonus
             double chance = baseChance + (event.getEntity().getRandom().nextDouble() * bonusChance);
-
+            
             if (event.getEntity().getRandom().nextDouble() < chance) {
                 event.getDrops().add(new ItemEntity(
                     event.getEntity().level(),
@@ -209,27 +290,6 @@ public class ExampleMod {
                 ));
             }
         }
-    }
-
-    private void notifyTurretPlaqueDrop(SkeletonTurret turret, int unitId, double x, double y, double z) {
-        if (turret.getOwnerUUID() == null || !(turret.level() instanceof ServerLevel serverLevel)) return;
-        ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(turret.getOwnerUUID());
-        if (owner == null) return;
-
-        String cmd = String.format("/skull tpplaque %.2f %.2f %.2f", x, y, z);
-        Component clickable = Component.literal("[点击传送]")
-                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.AQUA)
-                        .withUnderlined(true)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd)));
-
-        owner.sendSystemMessage(Component.literal("编号#" + unitId + " 受到致命伤害 已阵亡 ").append(clickable).append(Component.literal(" 拾取死亡铭牌")));
-    }
-
-    private void notifyTurretDestroyed(SkeletonTurret turret) {
-        if (turret.getOwnerUUID() == null || !(turret.level() instanceof ServerLevel serverLevel)) return;
-        ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(turret.getOwnerUUID());
-        if (owner == null) return;
-        owner.sendSystemMessage(Component.literal("编号#" + turret.getEntityData().get(SkeletonTurret.UNIT_ID) + " 已确认销毁！"));
     }
 
     @SubscribeEvent
@@ -1073,18 +1133,6 @@ public class ExampleMod {
             for (Entity e : toRemove) {
                 level.sendParticles(ParticleTypes.BUBBLE, e.getX(), e.getY(), e.getZ(), 1, 0, 0, 0, 0.1);
                 e.discard();
-            }
-        }
-
-        // [Part C] 死亡铭牌垃圾回收 (每30秒)
-        if (event.level.getGameTime() % 600 == 0 && event.level instanceof ServerLevel level && TurretConfig.COMMON.enableDeathPlaqueGc.get()) {
-            long ttlTicks = TurretConfig.COMMON.deathPlaqueItemTtlSeconds.get() * 20L;
-            for (Entity entity : level.getAllEntities()) {
-                if (!(entity instanceof ItemEntity itemEntity)) continue;
-                ItemStack stack = itemEntity.getItem();
-                if (!stack.is(DEATH_RECORD_ITEM.get())) continue;
-                if (itemEntity.tickCount < ttlTicks) continue;
-                itemEntity.discard();
             }
         }
     }

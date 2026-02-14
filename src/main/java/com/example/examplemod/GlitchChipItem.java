@@ -92,6 +92,8 @@ public class GlitchChipItem extends Item {
         }
     }
 
+
+
     // 辅助方法：找到并消耗背包里的材料
     private void findAndConsumeItem(Player player, Item itemToConsume) {
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {

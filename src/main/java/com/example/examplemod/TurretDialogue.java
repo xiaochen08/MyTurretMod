@@ -14,6 +14,7 @@ public class TurretDialogue {
     public enum Type {
         RECOVER_FULL(5000),
         LOW_HP(5000),
+        DYING(5000),
         REPAIR(2000),
         ENCHANT(2000),
         BERSERK(5000),
@@ -196,6 +197,7 @@ public class TurretDialogue {
         String[] pool = switch (type) {
             case RECOVER_FULL -> QUOTES_RECOVER_FULL;
             case LOW_HP -> QUOTES_LOW_HP;
+            case DYING -> QUOTES_LOW_HP;
             case REPAIR -> QUOTES_REPAIR;
             case ENCHANT -> QUOTES_ENCHANT;
             case BERSERK -> QUOTES_BERSERK;

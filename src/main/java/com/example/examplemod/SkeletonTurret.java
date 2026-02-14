@@ -65,7 +65,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
 
 
-    // ✅ 新增：智能止损变量
+    // �?新增：智能止损变�?
     // 记录上一次所在的区块位置
     // 语音冷却记录
 
@@ -74,46 +74,46 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private net.minecraft.world.level.ChunkPos keptChunkPos;
     private double spawnX, spawnY, spawnZ;
     private long lastHeatStackTime = 0;
-    private int consecutiveMisses = 0;   // 连续未造成伤害的次数
+    private int consecutiveMisses = 0;   // 连续未造成伤害的次�?
     private int blockedSightTime = 0;    // 视线被遮挡的时间 (tick)
     private long lastDamageTimestamp = 0; // 上次造成伤害的时间戳 (用于辅助判断)
 
     // 🔍 1. 定义跟随模式的数据ID (放在类定义的最上面)
     private static final EntityDataAccessor<Boolean> FOLLOW_MODE = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
-    // ✅ 新增：状态同步 (用于 HUD 显示)
+    // �?新增：状态同�?(用于 HUD 显示)
     private static final EntityDataAccessor<Boolean> IS_PURGE_ACTIVE = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> IS_SCAVENGING = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
-    // ✅ 新增：身份编号 (001-999)
+    // �?新增：身份编�?(001-999)
     public static final EntityDataAccessor<Integer> UNIT_ID = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> DEATH_PLAQUE_FATAL_HIT_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     // RANGE_LEVEL removed - derived from TIER
 
-    // ==================== 🗣️ 头顶显示系统数据 ====================
-    // 1. 台词内容 (空字符串代表没说话)
+    // ==================== 🗣�?头顶显示系统数据 ====================
+    // 1. 台词内容 (空字符串代表没说�?
     private static final EntityDataAccessor<String> DATA_DIALOGUE_TEXT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.STRING);
     // 2. 台词剩余显示时间 (Tick)
     private static final EntityDataAccessor<Integer> DATA_DIALOGUE_TIMER = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
-    // 3. 状态栏内容 (用于显示 ⚠ 25s 自毁 / 🎒 背包已满 等)
+    // 3. 状态栏内容 (用于显示 �?25s 自毁 / 🎒 背包已满 �?
     private static final EntityDataAccessor<String> DATA_STATUS_OVERLAY = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.STRING);
-    // ✅ 新增：把热度变成同步数据，这样 UI 才能实时看到它跳动！
+    // �?新增：把热度变成同步数据，这�?UI 才能实时看到它跳动！
     private static final EntityDataAccessor<Integer> DATA_HEAT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TIER = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Boolean> IS_FOLLOWING = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<Integer> KILL_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> KILL_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
 
     private static final EntityDataAccessor<Boolean> IS_BRUTAL = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> UPGRADE_PROGRESS = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
-    // ✅ 新增：队长标识
+    // �?新增：队长标�?
     private static final EntityDataAccessor<Boolean> IS_CAPTAIN = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> IS_SQUAD_MEMBER = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
-    // ✅ 新增：同步的基础名字 (解决改名后变回原样的问题)
-    // ✅ 只保留这一个！这是我们唯一要用的“真名字”
+    // �?新增：同步的基础名字 (解决改名后变回原样的问题)
+    // �?只保留这一个！这是我们唯一要用的“真名字�?
     private static final EntityDataAccessor<String> SYNC_BASE_NAME = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.STRING);
-    // ✅ 新增：同步的主人UUID (解决客户端无法获取主人信息的问题)
+    // �?新增：同步的主人UUID (解决客户端无法获取主人信息的问题)
 
 
 
-    // ✅ 新增：主人身份同步通道 (解决 HUD 不显示的核心)
+    // �?新增：主人身份同步通道 (解决 HUD 不显示的核心)
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID_SYNC = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.OPTIONAL_UUID);
 
     // DATA_LEVEL removed - derived from TIER
@@ -123,8 +123,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     // 注意：fireDelay 如果是逻辑变量，不需要同步，只需公开访问
     private int decayTimer = 0;
     private int eatCooldown = 0;
-    
-    // ✅ 新增：传送后攻击延迟和无敌时间
+
+    // �?新增：传送后攻击延迟和无敌时�?
     private int postTeleportAttackDelay = 0;
     private int invincibilityTimer = 0;
 
@@ -142,9 +142,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         int amplifier = 1; // Base Speed II
         if (tier >= 4) amplifier = 3;
         else if (tier >= 2) amplifier = 2;
-        
+
         this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 100, amplifier)); // 5 seconds duration
-        
+
         // Spawn particles
         spawnTeleportParticles();
     }
@@ -163,7 +163,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private int overheatCooldown = 0;
     private int xpBuffer = 0;
 
-    // ✅ 新增：强制救援模式开关
+    // �?新增：强制救援模式开�?
     private boolean isCommandRescue = false;
 
     public void setCommandRescue(boolean rescue) {
@@ -174,24 +174,30 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return this.isCommandRescue;
     }
 
-    // ✅ 新增：狂暴技能的计时器
+    // �?新增：狂暴技能的计时�?
     private int brutalityActiveTimer = 0;
     private int brutalityCooldown = 0;
 
     private UUID ownerUUID;
-    // ✅ 新增：记录入队时间 (用于排序：谁先来谁在上面)
+    // �?新增：记录入队时�?(用于排序：谁先来谁在上面)
     private long squadJoinTime = 0;
-    // ✅ 新增：传送模块状态
+    // �?新增：传送模块状�?
     private static final EntityDataAccessor<Boolean> HAS_TELEPORT_MODULE = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
-    // ✅ 新增：传送冷却 (Tick)
+    // �?新增：传送冷�?(Tick)
     private int teleportCooldown = 0;
     public int getTeleportCooldown() { return this.teleportCooldown; } // Added getter
+    private int teleportModuleLevel = 0;
+    private int multiShotLevel = 0;
+    private int blackHoleCooldown = 0;
+    private int blackHoleActiveTicks = 0;
+    private net.minecraft.world.phys.Vec3 blackHoleCenter = net.minecraft.world.phys.Vec3.ZERO;
+    private boolean deathRecordDropped = false;
 
     public final SimpleContainer inventory = new SimpleContainer(45);
 
     public SkeletonTurret(EntityType<? extends Skeleton> type, Level level) {
         super(type, level);
-        // ✅ 监听背包变化，检测传送模块
+        // �?监听背包变化，检测传送模�?
         this.inventory.addListener(new ContainerListener() {
             @Override
             public void containerChanged(Container container) {
@@ -202,20 +208,33 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     private void checkTeleportModule() {
         if (this.level().isClientSide) return;
-        boolean hasModule = false;
-        // 检查升级槽位 (5-9)
+        int bestTeleportLevel = 0;
+        int bestMultiShotLevel = 0;
+        // 检查升级槽�?(5-9)
         for (int i = 5; i < 10; i++) {
             ItemStack stack = this.inventory.getItem(i);
-            if (stack.getItem() == ExampleMod.TELEPORT_UPGRADE_MODULE.get()) {
-                hasModule = true;
-                break;
+            if (stack.getItem() instanceof GenericTurretModuleItem item) {
+                String moduleId = item.getModuleId(stack);
+                int level = item.getModuleLevel(stack);
+                if ("teleport".equals(moduleId)) {
+                    bestTeleportLevel = Math.max(bestTeleportLevel, level);
+                } else if ("multi_shot".equals(moduleId)) {
+                    bestMultiShotLevel = Math.max(bestMultiShotLevel, level);
+                }
+            } else if (stack.getItem() == ExampleMod.TELEPORT_UPGRADE_MODULE.get()) {
+                bestTeleportLevel = Math.max(bestTeleportLevel, TeleportUpgradeItem.getLevel(stack));
+            } else if (stack.getItem() == ExampleMod.MULTI_SHOT_UPGRADE_MODULE.get()) {
+                bestMultiShotLevel = Math.max(bestMultiShotLevel, MultiShotUpgradeModuleItem.getLevel(stack));
             }
         }
-        
+
+        this.teleportModuleLevel = bestTeleportLevel;
+        this.multiShotLevel = bestMultiShotLevel;
+        boolean hasModule = bestTeleportLevel > 0;
         boolean current = this.hasTeleportModule();
         if (hasModule != current) {
             this.setHasTeleportModule(hasModule);
-            // 播放音效 (仅在安装时)
+            // 播放音效 (仅在安装�?
             if (hasModule) {
                 this.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             }
@@ -223,12 +242,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // ==========================================
-    // 🖨️ 3D 打印核心数据 (Phase 1)
+    // 🖨�?3D 打印核心数据 (Phase 1)
     // ==========================================
-    // 打印进度：0.0 (无) -> 1.0 (完成)
+    // 打印进度�?.0 (�? -> 1.0 (完成)
     private static final EntityDataAccessor<Float> PRINT_PROGRESS = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.FLOAT);
 
-    // 打印状态机：0=正常, 1=打印中, 2=蓝屏死机, 3=逆向回收
+    // 打印状态机�?=正常, 1=打印�? 2=蓝屏死机, 3=逆向回收
     private static final EntityDataAccessor<Integer> PRINT_STATE = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
 
 
@@ -264,10 +283,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.entityData.define(HAS_TELEPORT_MODULE, false);
 
     }
-    
 
 
-    // ✅ 新增：强制拾荒模式状态
+
+    // �?新增：强制拾荒模式状�?
 
     public void setCommandScavenging(boolean scavenging) {
         this.entityData.set(IS_SCAVENGING, scavenging); // 存入同步数据
@@ -287,9 +306,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     // 🔍 3. 切换模式 (由数据包调用)
     public void setFollowMode(boolean shouldFollow) {
-        // ✅ [Fix] 恢复记录卡召唤实体的自由切换模式功能
+        // �?[Fix] 恢复记录卡召唤实体的自由切换模式功能
         this.entityData.set(FOLLOW_MODE, shouldFollow);
-        this.entityData.set(IS_FOLLOWING, shouldFollow); // ✅ 修复：同步更新 AI 使用的状态变量
+        this.entityData.set(IS_FOLLOWING, shouldFollow); // �?修复：同步更�?AI 使用的状态变�?
     }
 
 
@@ -299,8 +318,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 .add(Attributes.MOVEMENT_SPEED, 0.3)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 1.0)
                 .add(Attributes.ATTACK_DAMAGE, 4.0)
-                .add(Attributes.ATTACK_SPEED, 1.0) // ✅ 新增：基础攻速属性 (默认为1.0，即正常倍率)
-                .add(Attributes.FOLLOW_RANGE, 256.0); // ✅ 新增：把导航视野扩大到 256 格！
+                .add(Attributes.ATTACK_SPEED, 1.0) // �?新增：基础攻速属�?(默认�?.0，即正常倍率)
+                .add(Attributes.FOLLOW_RANGE, 256.0); // �?新增：把导航视野扩大�?256 格！
     }
 
 
@@ -317,13 +336,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.spawnZ = this.getZ();
         return result;
     }
-    // 重写远程攻击方法，记录射击次数
+    // 重写远程攻击方法，记录射击次�?
     @Override
     public void performRangedAttack(LivingEntity target, float distanceFactor) {
-        // ❌ 删除这行：super.performRangedAttack(target, distanceFactor);
+        // �?删除这行：super.performRangedAttack(target, distanceFactor);
         // 原版方法射出的是没有 NBT 标签的普通箭，导致友军伤害判断失效！
 
-        // ✅ 改为调用我们自定义的射击方法 (带 NBT 标签、带特效、带等级)
+        // �?改为调用我们自定义的射击方法 (�?NBT 标签、带特效、带等级)
         this.shootLinearArrow(target, getTier());
 
         // 记录失误次数 (保持你之前的逻辑)
@@ -332,6 +351,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             this.consecutiveMisses++;
         }
     }
+
+    public void shootModuleArrow(LivingEntity target, int tier, float speedMultiplier, double damageMultiplier, boolean bypassInvulnerability) {
+        // Keep compatibility with module hooks while reusing existing turret projectile behavior.
+        this.shootLinearArrow(target, tier);
+    }
+
     private void shootLinearArrow(LivingEntity target, int tier) {
         ItemStack itemstack = this.getProjectile(this.getItemInHand(ProjectileUtil.getWeaponHoldingHand(this, item -> item instanceof net.minecraft.world.item.BowItem)));
         AbstractArrow arrow = ProjectileUtil.getMobArrow(this, itemstack, 1.0f);
@@ -348,17 +373,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
         arrow.setNoGravity(true);
 
-        // ✅ [修改] 获取当前热度 (即攻速层数) -> 叠加 -> 保存
+        // �?[修改] 获取当前热度 (即攻速层�? -> 叠加 -> 保存
         int currentHeat = this.entityData.get(DATA_HEAT);
-        // 攻速叠加逻辑：
+        // 攻速叠加逻辑�?
         // Tier 0: 0% Boost (Max 0)
         // Tier 1: 225% Boost (Max 30)
         // ...
         // Tier 4: 900% Boost (Max 120) -> Total 1000%
-        int maxHeat = getTier() * 30; 
-        
-        // 每次命中叠加 1 层 (clamp 至上限)
-        // ✅ [修正] 攻速叠加间隔控制 (<= 50ms)
+        int maxHeat = getTier() * 30;
+
+        // 每次命中叠加 1 �?(clamp 至上�?
+        // �?[修正] 攻速叠加间隔控�?(<= 50ms)
         if (currentHeat < maxHeat) {
             long now = System.currentTimeMillis();
             if (now - this.lastHeatStackTime >= 50) {
@@ -367,8 +392,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.lastHeatStackTime = now;
             }
         }
-        
-        // 记录最后一次射击时间 (用于脱战衰减)
+
+        // 记录最后一次射击时�?(用于脱战衰减)
         this.lastDamageTimestamp = this.tickCount;
 
 
@@ -381,9 +406,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         double rY = (this.random.nextDouble() - 0.5) * spread;
         double rZ = (this.random.nextDouble() - 0.5) * spread;
 
-        // ✅ 根据射程等级调整箭矢速度 (v^2 正比于射程)
+        // �?根据射程等级调整箭矢速度 (v^2 正比于射�?
         // Level 1 (20m): ~1.6 (Vanilla 3.0 is ~64m) -> Vanilla default logic uses power based on charge time.
-        // Let's scale base velocity: 
+        // Let's scale base velocity:
         // L1(20m): 3.0 (Vanilla standard) - actually vanilla bow is 3.0 for full charge.
         // But for long range, we need more.
         // L2(32m): 3.5
@@ -400,7 +425,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         arrow.shoot(d0 + rX, d1 + rY, d2 + rZ, velocity, 0.0F);
 
-        // ✅ [修改] 移除热度伤害加成 (改用攻速流)
+        // �?[修改] 移除热度伤害加成 (改用攻速流)
         // 伤害公式：基础4 + 等级*5
         double dmg = (4.0 + (tier * 5.0));
 
@@ -408,7 +433,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         int pierce = (tier == 5) ? 10 : (tier + 1);
         arrow.setPierceLevel((byte) pierce);
 
-        // ✅ [修改] 音调随热度变高 (听觉反馈)
+        // �?[修改] 音调随热度变�?(听觉反馈)
         this.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F + (currentHeat * 0.005f));
         this.level().addFreshEntity(arrow);
     }
@@ -419,7 +444,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (this.tickCount % 1200 != 0) return; // 60s
 
         // 评分: Level * 100 + SurvivalTime + GearScore
-        int score = getTier() * 100 + (this.tickCount / 1200); 
+        int score = getTier() * 100 + (this.tickCount / 1200);
         for (ItemStack s : this.getArmorSlots()) {
             if (s.isEnchanted()) score += 20;
             if (s.getItem() instanceof net.minecraft.world.item.ArmorItem) score += 10;
@@ -433,7 +458,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         for (SkeletonTurret t : friends) {
             if (t.entityData.get(IS_CAPTAIN)) {
                 currentCaptain = t;
-                break; 
+                break;
             }
         }
 
@@ -461,19 +486,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private void manageHeatDecay() {
         int currentHeat = this.entityData.get(DATA_HEAT);
 
-        // 脱战判定：5秒 (100 tick) 无射击
+        // 脱战判定�?�?(100 tick) 无射�?
         long timeSinceLast = this.tickCount - this.lastDamageTimestamp;
-        
+
         if (timeSinceLast > 100 && currentHeat > 0) {
             // 每秒 (20 tick) 衰减 20%
             if (this.tickCount % 20 == 0) {
-                int decay = Math.max(1, (int)(currentHeat * 0.2)); // 至少减1
+                int decay = Math.max(1, (int)(currentHeat * 0.2)); // 至少�?
                 this.entityData.set(DATA_HEAT, Math.max(0, currentHeat - decay));
             }
         }
     }
 
-    // ✅ 新增：狂暴技能管理系统 (5秒爆发 + 动态CD)
+    // �?新增：狂暴技能管理系�?(5秒爆�?+ 动态CD)
     private void manageBrutalityAbility() {
         if (this.level().isClientSide) return;
 
@@ -506,12 +531,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         boolean isBrutalActive = this.entityData.get(IS_BRUTAL);
 
         if (isBrutalActive) {
-            // [状态 A]: 正在狂暴 (5秒)
+            // [状�?A]: 正在狂暴 (5�?
             brutalityActiveTimer--;
             if (brutalityActiveTimer <= 0) {
                 this.entityData.set(IS_BRUTAL, false);
 
-                // 冷却：基础25秒 - 每级减3秒
+                // 冷却：基础25�?- 每级�?�?
                 int reduceSeconds = this.getTier() * 3;
                 int cdSeconds = Math.max(5, 25 - reduceSeconds);
                 brutalityCooldown = cdSeconds * 20;
@@ -519,19 +544,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.playSound(SoundEvents.LAVA_EXTINGUISH, 1.0f, 0.5f);
             }
         } else {
-            // [状态 B]: 等待冷却
+            // [状�?B]: 等待冷却
             if (brutalityCooldown > 0) {
                 brutalityCooldown--;
             } else {
-                // 开启狂暴
+                // 开启狂�?
                 this.entityData.set(IS_BRUTAL, true);
-                brutalityActiveTimer = 100; // 5秒
+                brutalityActiveTimer = 100; // 5�?
 
                 this.playSound(SoundEvents.ENDER_DRAGON_GROWL, 1.0f, 0.5f);
                 if (this.level() instanceof ServerLevel sl) {
                     sl.players().forEach(p -> {
                         if (p.distanceToSqr(this) < 256) {
-                            p.displayClientMessage(Component.literal("§4⚡ 炮台进入狂暴模式！(5s)"), true);
+                            p.displayClientMessage(Component.literal("§4�?炮台进入狂暴模式�?5s)"), true);
                         }
                     });
                 }
@@ -541,18 +566,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     // ==================== 🚀 传送模块逻辑 ====================
     public boolean hasTeleportModule() { return this.entityData.get(HAS_TELEPORT_MODULE); }
     public void setHasTeleportModule(boolean has) { this.entityData.set(HAS_TELEPORT_MODULE, has); }
-    
-    public boolean canTeleport() { 
-        // 必须安装模块且冷却完毕
-        return this.hasTeleportModule() && teleportCooldown <= 0; 
+
+    public boolean canTeleport() {
+        // 必须安装模块且冷却完�?
+        return this.hasTeleportModule() && teleportCooldown <= 0;
     }
     public void setTeleportCooldown(int ticks) { this.teleportCooldown = ticks; }
-    
+
     private void tickTeleportCooldown() {
         if (teleportCooldown > 0) teleportCooldown--;
+        if (blackHoleCooldown > 0) blackHoleCooldown--;
     }
 
-    // 获取当前等级对应的传送冷却 (Tick)
+    // 获取当前等级对应的传送冷�?(Tick)
     // Configurable via TurretConfig
     public int getMaxTeleportCooldown() {
         int tier = getTier();
@@ -562,33 +588,103 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return Math.max(min, base - (tier * reduction));
     }
 
+    private void tickBlackHoleEffect() {
+        if (this.level().isClientSide || this.blackHoleActiveTicks <= 0) {
+            return;
+        }
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        int level = this.teleportModuleLevel;
+        if (level < 3) {
+            this.blackHoleActiveTicks = 0;
+            return;
+        }
+
+        this.blackHoleActiveTicks--;
+        double range = TeleportModuleRules.blackHoleRangeForLevel(level) * TurretConfig.COMMON.blackHoleRangeScale.get();
+        if (range <= 0.0) {
+            return;
+        }
+
+        final double rangeSqr = range * range;
+        int scanCap = Math.max(8, TurretConfig.COMMON.blackHoleEntityScanCap.get());
+        var area = new net.minecraft.world.phys.AABB(
+                this.blackHoleCenter.x - range, this.blackHoleCenter.y - range, this.blackHoleCenter.z - range,
+                this.blackHoleCenter.x + range, this.blackHoleCenter.y + range, this.blackHoleCenter.z + range
+        );
+
+        java.util.List<LivingEntity> targets = this.level().getEntitiesOfClass(
+                LivingEntity.class,
+                area,
+                e -> isValidBlackHoleTarget(e, rangeSqr)
+        );
+        targets.sort(java.util.Comparator.comparingDouble(e -> e.distanceToSqr(this.blackHoleCenter)));
+        if (targets.size() > scanCap) {
+            targets = targets.subList(0, scanCap);
+        }
+
+        for (LivingEntity target : targets) {
+            double dx = this.blackHoleCenter.x - target.getX();
+            double dy = this.blackHoleCenter.y - target.getY();
+            double dz = this.blackHoleCenter.z - target.getZ();
+            double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (len < 1.0e-4) {
+                continue;
+            }
+            double pull = 0.28 + Math.min(0.30, range / 120.0);
+            target.setDeltaMovement(
+                    target.getDeltaMovement().add(dx / len * pull, Math.min(0.18, dy / len * pull + 0.04), dz / len * pull)
+            );
+            target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 8, 1, false, false, true));
+        }
+
+        // Strong visual cue while black-hole pull is active.
+        serverLevel.sendParticles(ParticleTypes.PORTAL, this.blackHoleCenter.x, this.blackHoleCenter.y + 0.25, this.blackHoleCenter.z,
+                36, range * 0.22, 0.35, range * 0.22, 0.05);
+        serverLevel.sendParticles(ParticleTypes.ENCHANT, this.blackHoleCenter.x, this.blackHoleCenter.y + 0.15, this.blackHoleCenter.z,
+                24, range * 0.20, 0.28, range * 0.20, 0.02);
+        serverLevel.sendParticles(ParticleTypes.SMOKE, this.blackHoleCenter.x, this.blackHoleCenter.y + 0.15, this.blackHoleCenter.z,
+                18, range * 0.18, 0.20, range * 0.18, 0.01);
+    }
+
+    private boolean isValidBlackHoleTarget(LivingEntity target, double rangeSqr) {
+        if (target == null || !target.isAlive()) return false;
+        if (target == this || target instanceof Player || target instanceof SkeletonTurret) return false;
+        if (target.getPersistentData().getBoolean("IsFriendlyZombie")) return false;
+        if (target.getPersistentData().getBoolean("IsFriendlyCreeper")) return false;
+        return target.distanceToSqr(this.blackHoleCenter) <= rangeSqr;
+    }
+
     @Override
     public void tick() {
         super.tick();
-        
+
         if (this.isDeadOrDying()) {
             return;
         }
 
         tickTeleportCooldown();
+        tickBlackHoleEffect();
 
-        // ✅ [Fix] 记录卡召唤实体的物理与状态修正
+        // �?[Fix] 记录卡召唤实体的物理与状态修�?
         if (!this.level().isClientSide && this.getPersistentData().getBoolean("RecordSummoned")) {
-            // 1. 物理修正 (仅在非乘骑、非水下、非飞行时)
+            // 1. 物理修正 (仅在非乘骑、非水下、非飞行�?
             if (!this.isInWater() && !this.isPassenger() && !this.isNoGravity()) {
-                // 检测悬空
+                // 检测悬�?
                 if (!this.onGround()) {
                     // 施加额外重力 (防止漂浮)
                     this.setDeltaMovement(this.getDeltaMovement().add(0, -0.08, 0));
 
-                    // 严重偏移检测 (与下方方块距离)
+                    // 严重偏移检�?(与下方方块距�?
                     // 只在非上升状态下修正 (防止打断跳跃)
                     if (this.getDeltaMovement().y <= 0.01) {
                         BlockPos pos = this.blockPosition();
                         int groundY = pos.getY();
                         boolean foundGround = false;
-                        
-                        // 向下探测 5 格
+
+                        // 向下探测 5 �?
                         for (int i = 0; i < 5; i++) {
                             BlockPos p = pos.below(i);
                             if (!this.level().isEmptyBlock(p)) {
@@ -600,7 +696,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
                         if (foundGround) {
                             double diff = this.getY() - groundY;
-                            // 如果悬空高度在 0.5 到 3.0 之间，且不是在跳跃，强制吸附
+                            // 如果悬空高度�?0.5 �?3.0 之间，且不是在跳跃，强制吸附
                             if (diff > 0.5 && diff < 3.0) {
                                 this.setPos(this.getX(), groundY, this.getZ());
                                 this.setDeltaMovement(this.getDeltaMovement().multiply(1, 0, 1)); // 清空垂直速度
@@ -611,32 +707,32 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 }
             }
         }
-        
-        // ✅ 更新计时器
+
+        // �?更新计时�?
         if (this.invincibilityTimer > 0) this.invincibilityTimer--;
         if (this.postTeleportAttackDelay > 0) this.postTeleportAttackDelay--;
-        
 
-        
-        // ✅ 确保每一帧都检查热度衰减
+
+
+        // �?确保每一帧都检查热度衰�?
         manageHeatDecay();
 
-        // 检查并初始化编号
+        // 检查并初始化编�?
         if (!this.level().isClientSide && this.entityData.get(UNIT_ID) == 0) {
             this.entityData.set(UNIT_ID, this.random.nextInt(999) + 1);
-            updateCustomName(); // 生成后立刻刷新名字
+            updateCustomName(); // 生成后立刻刷新名�?
         }
         // ==================== 📡 数据同步补丁 ====================
         if (!this.level().isClientSide) {// ==================== 💳 方案一：身份卡系统 (Slot 25) ====================
-            // 每秒检查一次 (20 tick)
+            // 每秒检查一�?(20 tick)
             if (this.tickCount % 20 == 0) {
-                // 获取第 25 格的物品 (倒数第二格，因为 26 是属性书)
+                // 获取�?25 格的物品 (倒数第二格，因为 26 是属性书)
                 ItemStack idCard = this.inventory.getItem(39);
 
-                // 获取当前的名字
+                // 获取当前的名�?
                 String currentName = this.entityData.get(SYNC_BASE_NAME);
 
-                // 情况 A: 插槽里有带名字的物品 (命名牌、纸、剑...都可以)
+                // 情况 A: 插槽里有带名字的物品 (命名牌、纸、剑...都可�?
                 if (!idCard.isEmpty() && idCard.hasCustomHoverName()) {
                     String cardName = idCard.getHoverName().getString();
 
@@ -645,13 +741,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                         this.entityData.set(SYNC_BASE_NAME, cardName);
                         updateCustomName(); // 立即刷新头顶显示
 
-                        // 播放一个提示音效 (可选)
+                        // 播放一个提示音�?(可�?
                         this.playSound(SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, 1.0f, 1.0f);
                     }
                 }
-                // 情况 B: 插槽是空的 (或者物品没名字) -> 恢复默认
+                // 情况 B: 插槽是空�?(或者物品没名字) -> 恢复默认
                 else {
-                    // 如果现在的名字不是默认的 "先锋队员"，就恢复它
+                    // 如果现在的名字不是默认的 "先锋队员"，就恢复�?
                     if (!currentName.equals("先锋队员")) {
                         this.entityData.set(SYNC_BASE_NAME, "先锋队员");
                         updateCustomName();
@@ -675,14 +771,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         this.updateOverheadStatus();
 
-// ==================== 🗣️ 头顶文字管理 (新增) ====================
+// ==================== 🗣�?头顶文字管理 (新增) ====================
 
         // 1. 台词计时器递减
         int speechTimer = this.entityData.get(DATA_DIALOGUE_TIMER);
         if (speechTimer > 0) {
             this.entityData.set(DATA_DIALOGUE_TIMER, speechTimer - 1);
         } else {
-            // 时间到了，清空台词
+            // 时间到了，清空台�?
             if (!this.entityData.get(DATA_DIALOGUE_TEXT).isEmpty()) {
                 this.entityData.set(DATA_DIALOGUE_TEXT, "");
             }
@@ -696,7 +792,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             // ===============================================================
 
-            // ==================== 🛡️ 智能战斗监控 ====================
+            // ==================== 🛡�?智能战斗监控 ====================
             LivingEntity target = this.getTarget();
             if (target != null && target.isAlive()) {
                 if (target.getLastHurtByMob() == this) {
@@ -711,7 +807,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                     this.consecutiveMisses = 0;
                     this.playSound(SoundEvents.DISPENSER_FAIL, 1.0f, 1.5f);
 
-                    // ✅ 修复：必须是 [跟随模式] 且 [不在坚守] 时，才允许跑向主人！
+                    // �?修复：必须是 [跟随模式] �?[不在坚守] 时，才允许跑向主人！
                     if (this.ownerUUID != null && this.isFollowing()) {
                         LivingEntity owner = this.level().getPlayerByUUID(this.ownerUUID);
                         if (owner != null) this.getNavigation().moveTo(owner, 1.0);
@@ -736,12 +832,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.blockedSightTime = 0;
             }
 
-            // ==================== 🚑 紧急回防 ====================
+            // ==================== 🚑 紧急回�?====================
             if (this.isCommandScavenging() && this.ownerUUID != null) {
                 Player owner = this.level().getPlayerByUUID(this.ownerUUID);
                 if (owner != null && owner.hurtTime > 0) {
                     this.setCommandScavenging(false);
-                    this.teleportToSafeSpot(owner);
+                    this.teleportToSafeSpot(owner, true);
                     this.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
                 }
             }
@@ -749,14 +845,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             // ==================== 🧩 日常功能 ====================
             if (this.getHealth() < this.getMaxHealth()) autoEat();
             if (this.tickCount % 20 == 0) updateInfoBookAndSlots();
-            // --- 🗣️ 语音系统挂载: 闲聊 & 状态 ---
+            // --- 🗣�?语音系统挂载: 闲聊 & 状�?---
 
-            // 1. 闲聊 (每10秒尝试一次)
+            // 1. 闲聊 (�?0秒尝试一�?
             if (this.tickCount % 200 == 0) {
                 TurretDialogue.trySpeak(this, TurretDialogue.Type.IDLE);
             }
 
-            // 2. 低血量检测 (每秒检测)
+            // 2. 低血量检�?(每秒检�?
             if (this.tickCount % 20 == 0) {
                 float hp = this.getHealth();
                 float max = this.getMaxHealth();
@@ -775,17 +871,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             checkOwnerDistanceAndTeleport();
             tickPrintLogic();
             tickCaptainLogic();
-            // 如果正在打印或回收，禁止执行后续的打怪/移动 AI
+            // 如果正在打印或回收，禁止执行后续的打�?移动 AI
             if (getPrintState() != 0) {
-                // 🛑 绝对锚定：X, Y, Z 速度全部归零！
-                // 之前是 this.getDeltaMovement().y，这会导致它能被推上天。
-                // 现在改成 0，它就像钉在地上一样。
+                // 🛑 绝对锚定：X, Y, Z 速度全部归零�?
+                // 之前�?this.getDeltaMovement().y，这会导致它能被推上天�?
+                // 现在改成 0，它就像钉在地上一样�?
                 this.setDeltaMovement(0, 0, 0);
 
-                // 额外保险：强制重置位置到生成点 (防止被挤偏)
+                // 额外保险：强制重置位置到生成�?(防止被挤�?
                 // (spawnX, spawnY, spawnZ 是我们在 finalizeSpawn 里记录的)
-                if (this.spawnY != 0) { // 确保 spawnY 已被赋值
-                    // 只锁 Y 轴，允许水平微量挤压，或者全锁
+                if (this.spawnY != 0) { // 确保 spawnY 已被赋�?
+                    // 只锁 Y 轴，允许水平微量挤压，或者全�?
                     this.setPos(this.getX(), this.spawnY, this.getZ());
                 }
                 return;
@@ -800,58 +896,58 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private void updateOverheadStatus() {
         String status = "";
 
-        // ✅ 1. 动态呼吸点算法 (每 0.5秒 变一次)
-        // 这里的逻辑是：用总时间除以 10，然后对 4 取余数，得到 0, 1, 2, 3 循环
+        // �?1. 动态呼吸点算法 (�?0.5�?变一�?
+        // 这里的逻辑是：用总时间除�?10，然后对 4 取余数，得到 0, 1, 2, 3 循环
         int step = (this.tickCount / 10) % 4;
         String dots = switch (step) {
             case 0 -> ".";
             case 1 -> "..";
             case 2 -> "...";
-            default -> ""; // 第 4 拍留空，产生闪烁感
+            default -> ""; // �?4 拍留空，产生闪烁�?
         };
 
         // ==========================================
         // ⬇️ 状态判断逻辑 ⬇️
         // ==========================================
 
-        // 优先级 2: 狂暴倒计时
+        // 优先�?2: 狂暴倒计�?
         if (this.entityData.get(IS_BRUTAL)) {
             int sec = this.brutalityActiveTimer / 20;
-            status = "§4§l⚡ 残暴模式: " + sec + "s";
+            status = "§4§l�?残暴模式: " + sec + "s";
         }
-        // 优先级 3: 打印/回收中
+        // 优先�?3: 打印/回收�?
         else if (getPrintState() != 0) {
             int percent = (int)(getPrintProgress() * 100);
             // 既然也是进行中，我们顺手也加上点，看着更舒服！
             status = (getPrintState() == 3)
-                    ? "§e§l♻ 回收中" + dots + ": " + percent + "%"
-                    : "§b§l▨ 构建中" + dots + ": " + percent + "%";
+                    ? "§e§l[回收]" + dots + ": " + percent + "%"
+                    : "§b§l[构建]" + dots + ": " + percent + "%";
         }
-        // 优先级 4: 背包已满 (当处于拾荒模式时)
+        // 优先�?4: 背包已满 (当处于拾荒模式时)
         else if (this.isCommandScavenging() && isInventoryFull()) {
             status = "§6§l🎒 背包已满 (ID:" + this.entityData.get(UNIT_ID) + ")";
         }
-        // 优先级 4.5: 空间不足 (<10%)
+        // 优先�?4.5: 空间不足 (<10%)
         else if (this.isCommandScavenging() && getFreeSlotCount() < 5) {
-            status = "§e§l⚠ 空间不足 (ID:" + this.entityData.get(UNIT_ID) + ")";
+            status = "§e§l�?空间不足 (ID:" + this.entityData.get(UNIT_ID) + ")";
         }
-        // 优先级 5: 拾荒中 (✅ 应用动画)
+        // 优先�?5: 拾荒�?(�?应用动画)
         else if (this.isCommandScavenging()) {
-            status = "§e§l⚗ 正在拾荒" + dots;
+            status = "§e§l�?正在拾荒" + dots;
         }
-        // 优先级 6: 清剿中 (✅ 应用动画)
+        // 优先�?6: 清剿�?(�?应用动画)
         else if (this.isPurgeActive()) {
             // 加上杀敌数统计，配合呼吸点，更有战术感
-            status = "§c§l⚔ 清剿进行中" + dots + " §7[" + this.purgeKillCount + "]";
+            status = "§c§l[清剿进行]" + dots + " §7[" + this.purgeKillCount + "]";
         }
 
-        // 更新数据 (只有变化时才发包，节省流量)
+        // 更新数据 (只有变化时才发包，节省流�?
         if (!status.equals(this.entityData.get(DATA_STATUS_OVERLAY))) {
             this.entityData.set(DATA_STATUS_OVERLAY, status);
         }
     }
 
-    // 辅助：检查背包是否满了 (只检查储物格 12-26)
+    // 辅助：检查背包是否满�?(只检查储物格 12-26)
     private boolean isInventoryFull() {
         for (int i = 12; i < 37; i++) {
             if (this.inventory.getItem(i).isEmpty()) return false;
@@ -869,7 +965,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     // 自动整理
     public void sortInventory() {
-        // 简单排序：将高价值物品移到前面 (12-36)
+        // 简单排序：将高价值物品移到前�?(12-36)
         List<ItemStack> stacks = new ArrayList<>();
         for (int i = 12; i < 37; i++) {
             ItemStack s = this.inventory.getItem(i);
@@ -878,9 +974,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.inventory.setItem(i, ItemStack.EMPTY);
             }
         }
-        
+
         stacks.sort((a, b) -> Integer.compare(getItemValue(b), getItemValue(a))); // Descending
-        
+
         for (int i = 0; i < stacks.size(); i++) {
             if (i + 12 < 37) {
                 this.inventory.setItem(i + 12, stacks.get(i));
@@ -899,10 +995,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return 0;
     }
 
-    // ✅ 新增：供外部调用的“说话”接口
+    // �?新增：供外部调用的“说话”接�?
     public void setOverheadDialogue(String text) {
         this.entityData.set(DATA_DIALOGUE_TEXT, text);
-        this.entityData.set(DATA_DIALOGUE_TIMER, 80); // 显示 4 秒 (80 tick)
+        this.entityData.set(DATA_DIALOGUE_TIMER, 80); // 显示 4 �?(80 tick)
     }
 
     // Getter 供渲染器使用
@@ -914,7 +1010,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
 
     // ==========================================
-    // 🖨️ 3D 打印逻辑核心
+    // 🖨�?3D 打印逻辑核心
     // ==========================================
     private int summonRetryCount = 0;
 
@@ -922,13 +1018,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         int state = this.entityData.get(PRINT_STATE);
         float progress = this.entityData.get(PRINT_PROGRESS);
 
-        // [状态 0] 正常状态：什么都不做
+        // [状�?0] 正常状态：什么都不做
         if (state == 0) return;
 
-        // [状态 1] 正在打印 (Printing)
+        // [状�?1] 正在打印 (Printing)
         if (state == 1) {
-            // 1. 进度增加 (速度：大约 5 秒完成)
-            // 如果你想快点，把 0.01f 改大，比如 0.02f
+            // 1. 进度增加 (速度：大�?5 秒完�?
+            // 如果你想快点，把 0.01f 改大，比�?0.02f
             if (progress > 0.0f && progress < 0.02f) {
                 // 音量 1.0, 音调 1.0
                 this.playSound(ModSounds.PRINT_LOOP.get(), 0.5f, 1.0f);
@@ -936,35 +1032,35 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             progress += 0.01f;
 
-            // 2. 蓝屏判定 (BSOD) - 已移除
+            // 2. 蓝屏判定 (BSOD) - 已移�?
             // if (!this.level().isClientSide && progress > 0.6f && progress < 0.8f) { ... }
 
-            // 3. 环境互动：烧灼地面 (粒子特效)
+            // 3. 环境互动：烧灼地�?(粒子特效)
             if (this.level().isClientSide) {
-                // 在当前打印高度生成火花
+                // 在当前打印高度生成火�?
                 double y = this.getY() + (this.getBbHeight() * progress);
                 if (this.random.nextFloat() < 0.3f) {
                     this.level().addParticle(ParticleTypes.SMOKE, this.getX(), this.getY(), this.getZ(), 0, 0.05, 0);
                     this.level().addParticle(ParticleTypes.FLAME, this.getX() + (random.nextDouble()-0.5), this.getY(), this.getZ() + (random.nextDouble()-0.5), 0, 0.01, 0);
                 }
-// ... (上面的代码不变)
+// ... (上面的代码不�?
 
 // ... (tickPrintLogic 方法内部) ...
 
             } else {
-                // 服务端：气浪排斥逻辑 (已升级)
+                // 服务端：气浪排斥逻辑 (已升�?
                 if (progress > 0.1f) {
-                    // 范围：以自身为中心，向外扩 1.5 格 (稍微大一点点)
+                    // 范围：以自身为中心，向外�?1.5 �?(稍微大一点点)
                     List<LivingEntity> pushTargets = this.level().getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(1.5));
 
                     for (LivingEntity e : pushTargets) {
-                        // 🛑 调用刚才写的通用过滤器
+                        // 🛑 调用刚才写的通用过滤�?
                         if (isImmuneToPush(e)) {
-                            continue; // 是自己人/骷髅/特定单位，跳过，不推！
+                            continue; // 是自己人/骷髅/特定单位，跳过，不推�?
                         }
 
                         // 对杂鱼执行推开操作
-                        // 稍微减小一点力度 (0.1 -> 0.08)，防止把苦力怕推到玩家脸上
+                        // 稍微减小一点力�?(0.1 -> 0.08)，防止把苦力怕推到玩家脸�?
                         if (!e.isShiftKeyDown()) {
                             e.push(0, 0.08, 0);
                         }
@@ -974,34 +1070,34 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             // ... (tickPrintLogic 方法后续) ...
 
-            // ... (下面的代码不变)
+            // ... (下面的代码不�?
 
             // 4. 完成判定
             if (progress >= 1.0f) {
                 progress = 1.0f;
-                setPrintState(0); // 切换回正常状态
+                setPrintState(0); // 切换回正常状�?
                 // 播放完成音效
                 this.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                // 震开周围 (冲击波)
+                // 震开周围 (冲击�?
                 if (!this.level().isClientSide) {
                     ((ServerLevel)this.level()).sendParticles(ParticleTypes.EXPLOSION, this.getX(), this.getY()+1, this.getZ(), 1, 0, 0, 0, 0);
                     // 召唤成功确认
                     if (this.ownerUUID != null) {
                         Player p = this.level().getPlayerByUUID(this.ownerUUID);
-                        if (p != null) p.displayClientMessage(Component.literal("§a[系统] 机体构建完成，系统上线。"), true);
+                        if (p != null) p.displayClientMessage(Component.literal("§a[系统] 机体构建完成，系统上线"), true);
                     }
                 }
             }
         }
 
-        // [状态 2] 蓝屏死机 (Failed)
+        // [状�?2] 蓝屏死机 (Failed)
         else if (state == 2) {
-             // 自动重试逻辑 (最多3次)
+             // 自动重试逻辑 (最�?�?
             if (!this.level().isClientSide) {
                 if (this.summonRetryCount < 3) {
                     this.summonRetryCount++;
-                    this.entityData.set(PRINT_PROGRESS, 0.0f); 
-                    this.setPrintState(1); 
+                    this.entityData.set(PRINT_PROGRESS, 0.0f);
+                    this.setPrintState(1);
                     return;
                 }
             }
@@ -1013,7 +1109,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             this.playSound(ModSounds.PRINT_ERROR.get(), 0.5f, 1.5f);
 
 
-            // 倒计时爆炸 (暂时写个简单的自毁，以后加掉落芯片)
+            // 倒计时爆�?(暂时写个简单的自毁，以后加掉落芯片)
             if (!this.level().isClientSide && this.tickCount % 20 == 0) {
                 // 简易爆炸逻辑
                 this.hurt(this.level().damageSources().generic(), 2.0f); // 自己扣血直到炸掉
@@ -1022,11 +1118,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         }
 
-        // [状态 3] 逆向回收 (Recycling)
+        // [状�?3] 逆向回收 (Recycling)
         else if (state == 3) {
-            progress -= 0.02f; // 倒退速度快一点
+            progress -= 0.02f; // 倒退速度快一�?
 
-            // 特效：吸入粒子
+            // 特效：吸入粒�?
             if (this.level().isClientSide) {
                 this.level().addParticle(ParticleTypes.PORTAL, this.getX(), this.getY() + 1, this.getZ(), (random.nextDouble()-0.5), (random.nextDouble()-0.5), (random.nextDouble()-0.5));
             }
@@ -1034,7 +1130,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             if (progress <= 0.0f) {
                 progress = 0.0f;
                 if (!this.level().isClientSide) {
-                    // 掉落回收芯片 (先用红石代替，等后面我们做芯片)
+                    // 掉落回收芯片 (先用红石代替，等后面我们做芯�?
                     this.spawnAtLocation(ExampleMod.GLITCH_CHIP.get());
                     this.discard(); // 彻底删除
                 }
@@ -1045,17 +1141,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.entityData.set(PRINT_PROGRESS, progress);
     }
 
-    // 辅助方法：设置状态
+    // 辅助方法：设置状�?
     public void setPrintState(int state) {
         this.entityData.set(PRINT_STATE, state);
     }
 
-    // 辅助方法：获取进度 (给渲染器用)
+    // 辅助方法：获取进�?(给渲染器�?
     public float getPrintProgress() {
         return this.entityData.get(PRINT_PROGRESS);
     }
 
-    // 辅助方法：获取状态
+    // 辅助方法：获取状�?
     public int getPrintState() {
         return this.entityData.get(PRINT_STATE);
     }
@@ -1084,13 +1180,25 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     public void teleportToSafeSpot(LivingEntity owner) {
-        // 全局禁止：未安装模块无法传送
+        teleportToSafeSpot(owner, false);
+    }
+
+    public void teleportToSafeSpot(LivingEntity owner, boolean damageTriggered) {
+        // 全局禁止：未安装模块无法传�?
         if (!this.hasTeleportModule()) {
             if (owner instanceof Player player) {
                 player.displayClientMessage(Component.translatable("message.examplemod.teleport_module_missing"), true);
             }
             return;
         }
+        if (!this.canTeleport()) {
+            if (owner instanceof Player player) {
+                TeleportRequestGateway.notifyTeleportDeniedToOwner(this, player, this.getTeleportCooldown());
+            }
+            return;
+        }
+
+        net.minecraft.world.phys.Vec3 startPos = this.position();
 
         for (int i = 0; i < 10; i++) {
             double angle = this.random.nextDouble() * 2.0 * Math.PI;
@@ -1106,9 +1214,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             if (safeY != -999) {
                 this.moveTo(targetX, safeY, targetZ, this.getYRot(), this.getXRot());
                 this.getNavigation().stop();
+                this.setTeleportCooldown(this.getMaxTeleportCooldown());
+                this.notifyTeleport();
+                this.onTeleportCompleted(startPos, damageTriggered);
                 if (this.level() instanceof ServerLevel sl) {
                     sl.sendParticles(ParticleTypes.PORTAL, targetX, safeY + 1, targetZ, 10, 0.5, 0.5, 0.5, 0.5);
-                    // 注意看 SoundEvents.ENDERMAN_TELEPORT 后面多加了一段代码
+                    // 注意�?SoundEvents.ENDERMAN_TELEPORT 后面多加了一段代�?
                     sl.playSound(null, targetX, safeY, targetZ, SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.HOSTILE, 1.0f, 1.0f);
                 }
                 return;
@@ -1136,13 +1247,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (target != null && target != this) {
             TurretDialogue.trySpeak(this, TurretDialogue.Type.SPOT_ENEMY);
         }
-        super.setTarget(target); // 别忘了保留这行
+        super.setTarget(target); // 别忘了保留这�?
     }
 
 
 
 
-    // 把原来 tick 里乱七八糟的逻辑都塞到这里面，保持 tick 清爽
+    // 把原�?tick 里乱七八糟的逻辑都塞到这里面，保�?tick 清爽
     private void runNormalLogic() {
         // 智能战斗监控
         LivingEntity target = this.getTarget();
@@ -1157,12 +1268,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.consecutiveMisses = 0;
             }
         }
-// 在 runNormalLogic() 或 tick() 中
-        if (this.tickCount % 200 == 0) { // 每10秒检查一次
+// �?runNormalLogic() �?tick() �?
+        if (this.tickCount % 200 == 0) { // �?0秒检查一�?
             TurretDialogue.trySpeak(this, TurretDialogue.Type.IDLE);
         }
 
-        // 自动吃东西
+        // 自动吃东�?
         if (this.getHealth() < this.getMaxHealth()) autoEat();
 
         // 更新书本
@@ -1172,7 +1283,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         // 嘲讽怪物
         if (this.tickCount % 10 == 0) tauntNearbyMonsters();
 
-        // 你的其他技能
+        // 你的其他技�?
         manageBrutalityAbility();
         manageTorchBehavior();
         handlePickupAndXp();
@@ -1187,15 +1298,15 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             System.err.println("[SkeletonTurret] Hurt loop detected for entity " + this.getId() + ", breaking loop.");
             return false;
         }
-        
+
         this.hurtRecursionCounter++;
         try {
-            // ✅ 传送无敌判定 (0.3s)
+            // �?传送无敌判�?(0.3s)
             if (this.invincibilityTimer > 0 && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) {
                 return false;
             }
 
-            // 1. 如果是无敌状态，直接免疫所有伤害 (除了虚空掉落)
+            // 1. 如果是无敌状态，直接免疫所有伤�?(除了虚空掉落)
             if (this.isInvulnerable()) {
                 return source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD);
             }
@@ -1205,7 +1316,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 if (this.ownerUUID != null && p.getUUID().equals(this.ownerUUID) && p.isShiftKeyDown()) {
                     return super.hurt(source, amount);
                 }
-                return false; // 普通左键免疫误伤
+                return false; // 普通左键免疫误�?
             }
 
             return super.hurt(source, amount);
@@ -1226,7 +1337,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         for (LivingEntity target : targets) {
             if (target instanceof Player) continue;
             if (target instanceof SkeletonTurret) continue;
-            if (target.hasCustomName() && target.getCustomName().getString().contains("感染体")) continue;
+            if (target.hasCustomName() && target.getCustomName().getString().contains("感染")) continue;
 
             target.hurt(this.level().damageSources().explosion(this, this), 200.0f);
             target.setSecondsOnFire(10);
@@ -1247,18 +1358,18 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     @Override
     protected void registerGoals() {
-        // ✅ 0. 浮水 (最高优先级)：保证掉水里会自己浮起来，而不是沉底
+        // �?0. 浮水 (最高优先级)：保证掉水里会自己浮起来，而不是沉�?
         this.goalSelector.addGoal(0, new net.minecraft.world.entity.ai.goal.FloatGoal(this));
-        // ✅ 新增：紧急传送 (优先级 1) - 只有在被围殴且无法逃脱时触发
+        // �?新增：紧急传�?(优先�?1) - 只有在被围殴且无法逃脱时触�?
         this.goalSelector.addGoal(1, new TurretEmergencyTeleportGoal(this));
-        
-        // ✅ 新增：原地巡逻 (优先级 6，比打怪低，比发呆高)
+
+        // �?新增：原地巡�?(优先�?6，比打怪低，比发呆�?
         // 参数：速度 1.0
         this.targetSelector.addGoal(0, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 0, true, false, (e) -> {
             if (!this.isPurgeActive()) return false; // 没开模式就不生效
-            // ✅ 修复核心：限制锁定距离！
+            // �?修复核心：限制锁定距离！
             double range = this.getAttackRange();
-            if (e.distanceToSqr(this) > range * range) return false; // ✅ 超过等级射程就不锁
+            if (e.distanceToSqr(this) > range * range) return false; // �?超过等级射程就不�?
             if (this.isFollowMode()) {
                 // 执行跟随逻辑
             }
@@ -1275,7 +1386,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             if (entity instanceof Mob mob && mob.getTarget() instanceof Player) return true;
             return false;
         }));
-        // ✅ 3. 普通怪物防御 (带等级射程限制)
+        // �?3. 普通怪物防御 (带等级射程限�?
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false,
                 (entity) -> {
                     if (entity instanceof SkeletonTurret) return false;
@@ -1283,42 +1394,42 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                     if (entity.getPersistentData().getBoolean("IsFriendlyZombie")) return false;
                     if (entity.getPersistentData().getBoolean("IsFriendlyCreeper")) return false;
                     if (entity instanceof IronGolem) return false;
-                    // ✅ 新增：距离检查 (防止 D级炮台去惹 100格外的苦力怕)
+                    // �?新增：距离检�?(防止 D级炮台去�?100格外的苦力�?
                     double range = this.getAttackRange();
                     if (entity.distanceToSqr(this) > range * range) return false;
                     return true;
                 }));
 
-        // ✅ 1. 落水逃生：如果在水里，优先往主人身边游，不准打架
-        // ✅ 插入在这里 (优先级 1)：怪贴脸了先拉扯！
+        // �?1. 落水逃生：如果在水里，优先往主人身边游，不准打架
+        // �?插入在这�?(优先�?1)：怪贴脸了先拉扯！
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this, SkeletonTurret.class).setAlertOthers());
-        // ❌ 删除：KeepDistanceGoal (已替换为传送)
-        // ❌ 删除：MaintainSpaceGoal (已替换为传送)
-        this.goalSelector.addGoal(1, new EscapeWaterGoal(this, 2.0)); // 速度 2.0 (游快点)
-        
-        // ✅ 攻击模式 (优先级 2)：站桩输出
+        // �?删除：KeepDistanceGoal (已替换为传�?
+        // �?删除：MaintainSpaceGoal (已替换为传�?
+        this.goalSelector.addGoal(1, new EscapeWaterGoal(this, 2.0)); // 速度 2.0 (游快�?
+
+        // �?攻击模式 (优先�?2)：站桩输�?
         this.goalSelector.addGoal(2, new RampUpBowAttackGoal(this));
-        
-        // ✅ 修复：只有在“跟随模式”开启时，才允许移动 (优先级 4)
+
+        // �?修复：只有在“跟随模式”开启时，才允许移动 (优先�?4)
         this.goalSelector.addGoal(4, new TurretFollowGoal(this, 1.2, 10.0F, 2.0F));
-        
-        // ✅ 新增：清剿模式-地毯式搜索 (优先级 3)
+
+        // �?新增：清剿模�?地毯式搜�?(优先�?3)
         this.goalSelector.addGoal(3, new PurgeMoveGoal(this));
-        
+
         this.goalSelector.addGoal(5, new TurretScavengeGoal(this, 1.15));
-        // ✅ 新增 2：护主模式 (攻击主人的敌人)
+        // �?新增 2：护主模�?(攻击主人的敌�?
         this.targetSelector.addGoal(2, new TurretDefendOwnerGoal(this));
-        // ✅ 新增 3：协作模式 (攻击主人正在打的敌人)
+        // �?新增 3：协作模�?(攻击主人正在打的敌人)
         this.targetSelector.addGoal(3, new TurretAssistOwnerGoal(this));
         this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        // ✅ 新增 4: 战术同步 (如果有队友在打架，我也加入)
+        // �?新增 4: 战术同步 (如果有队友在打架，我也加�?
         this.targetSelector.addGoal(4, new TurretPackAttackGoal(this));
 
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, IronGolem.class, true));
     }
 
     // ==========================================
-    // ✅ 修复：添加 Shift+右键 交互逻辑
+    // �?修复：添�?Shift+右键 交互逻辑
     // ==========================================
 
 
@@ -1342,16 +1453,16 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     private void updateInfoBookAndSlots() {
-        // 1. 同步装备槽位到背包前5格
+        // 1. 同步装备槽位到背包前5�?
         this.inventory.setItem(0, this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND));
         this.inventory.setItem(1, this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD));
         this.inventory.setItem(2, this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST));
         this.inventory.setItem(3, this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.LEGS));
         this.inventory.setItem(4, this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET));
 
-        // 2. 生成详细说明书
+        // 2. 生成详细说明�?
         ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
-        book.setHoverName(Component.literal("§e§l>>> 机体状态监控 <<<"));
+        book.setHoverName(Component.literal("§e§l>>> 机体状态监�?<<<"));
 
         // --- 数据计算 ---
         int tier = getTier();
@@ -1365,7 +1476,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             TurretDialogue.trySpeak(this, TurretDialogue.Type.LOW_HP);
         }
 
-        // 计算攻速 (用于显示)
+        // 计算攻�?(用于显示)
         float speed = getFireRate();
 
         // 计算伤害
@@ -1379,31 +1490,31 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         // [A] 悲惨档案
         if (tier == 0) {
-            lore.add(Component.literal("§8日记全是乱码... 只有一行字能看清:"));
-            lore.add(Component.literal("§8“听从命令。指挥官就是神。”"));
+            lore.add(Component.literal("§8日记全是乱码... 只有一行字能看�?"));
+            lore.add(Component.literal("§8“听从命令。指挥官就是神。"));
         } else if (tier >= 1 && tier < 4) {
             lore.add(Component.literal("§b[ 记忆碎片: 编号 " + this.entityData.get(UNIT_ID) + " ]"));
-            lore.add(Component.literal("§7“这里没有英雄，只有死不掉的鬼魂。”"));
-            lore.add(Component.literal("§7“武器是从我尸体的手骨上硬生生掰下来的。”"));
+            lore.add(Component.literal("§7“这里没有英雄，只有死不掉的鬼魂。"));
+            lore.add(Component.literal("§7“武器是从我尸体的手骨上硬生生掰下来的。"));
         } else {
             lore.add(Component.literal("§4[ 觉醒记录: 错误 ]"));
-            lore.add(Component.literal("§8“我看见了... 巨大的光标在天上划过。”"));
-            lore.add(Component.literal("§8“我们只是游戏里的数据吗？回答我！指挥官！”"));
+            lore.add(Component.literal("§8“我看见�?.. 巨大的光标在天上划过。"));
+            lore.add(Component.literal("§8“我们只是游戏里的数据吗？回答我！指挥官！"));
         }
 
 
 
         lore.add(Component.literal(" "));
 
-// [B] 战斗遥测 (✅ 这里不会再报错了)
+// [B] 战斗遥测 (�?这里不会再报错了)
         lore.add(Component.literal("§c[战斗遥测]"));
-        lore.add(Component.literal(String.format("  §c❤ 结构完整度: %.0f / %.0f", hp, maxHp)));
-        lore.add(Component.literal(String.format("  §6⚔ 弹药破坏力: %.1f", dmg)));
-        lore.add(Component.literal(String.format("  §b⚡ 射击频率: %.1f 发/秒", speed)));
+        lore.add(Component.literal(String.format("  §c结构完整 %.0f / %.0f", hp, maxHp)));
+        lore.add(Component.literal(String.format("  §6弹药破坏 %.1f", dmg)));
+        lore.add(Component.literal(String.format("§b射击频率: %.1f", speed)));
         // 热度显示
 
         if (isBrutal) {
-            lore.add(Component.literal("  §4🔥 引擎过载: 残暴模式已激活!"));
+            lore.add(Component.literal("  §4🔥 引擎过载: 残暴模式已激�?"));
         } else {
             int heat = getHeat();
             String heatColor = heat > 80 ? "§c" : (heat > 40 ? "§6" : "§a");
@@ -1412,37 +1523,37 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         lore.add(Component.literal(" "));
 
-        // [C] 技能模块 (动态显示当前拥有的)
+        // [C] 技能模�?(动态显示当前拥有的)
         lore.add(Component.literal("§d[已装载模块]"));
         getSkillList(tier).forEach(s -> lore.add(Component.literal("  " + s)));
 
         lore.add(Component.literal(" "));
 
-        // [D] 进化指引 (动态显示下一级需求)
+        // [D] 进化指引 (动态显示下一级需�?
         if (tier < 5) {
             lore.add(Component.literal("§a[晋升方案 -> " + getTierName(tier + 1).replaceAll("§.", "").substring(0, 4) + "..§a]"));
 
-            // 杀敌需求
+            // 杀敌需�?
             int kills = getKillCount();
             int target = getKillTarget(tier);
-            String killColor = kills >= target ? "§a✔" : "§c✖";
+            String killColor = kills >= target ? "§a" : "§c";
             lore.add(Component.literal(String.format("  %s 击杀战绩: %d / %d", killColor, kills, target)));
 
-            // 材料需求
+            // 材料需�?
             Item mat = getUpgradeMaterial(tier);
             int cost = getBaseMaterialCost(tier);
             boolean hasDiscount = ((float)kills / target) >= 0.5f;
-            if (hasDiscount) cost = (int)Math.ceil(cost / 2.0); // 5折
+            if (hasDiscount) cost = (int)Math.ceil(cost / 2.0); // 5�?
 
             String costStr = hasDiscount ? ("§e(半价) " + cost) : ("" + cost);
             lore.add(Component.literal("  §7 材料注入: §f" + mat.getDescription().getString() + " x" + costStr));
             lore.add(Component.literal("  §8 (手持材料右键点击注入)"));
         } else {
-            lore.add(Component.literal("§6★ 机体已进化至终极形态 ★"));
+            lore.add(Component.literal("§6机体已进化至终极形"));
         }
 
         lore.add(Component.literal("§8===================="));
-        lore.add(Component.literal("§8*此书仅为全息投影，无法取出"));
+        lore.add(Component.literal("§8*此书仅为全息投影"));
 
         // 打包写入 NBT
         CompoundTag display = new CompoundTag();
@@ -1459,10 +1570,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
 
     // ==========================================
-    // ✅ [冗余接口] UI 数据读取专用 (Getter)
+    // �?[冗余接口] UI 数据读取专用 (Getter)
     // ==========================================
 
-    // 1. 获取基础名字 (不带前缀的)
+    // 1. 获取基础名字 (不带前缀�?
     public String getBaseName() {
         return this.entityData.get(SYNC_BASE_NAME);
     }
@@ -1472,7 +1583,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return this.entityData.get(DATA_HEAT);
     }
 
-    // 3. 获取实时射速 (发/秒) - 逻辑与书本保持一致
+    // 3. 获取实时射�?(�?�? - 逻辑与书本保持一�?
     public float getFireRate() {
         return 20.0f / getFireDelay();
     }
@@ -1481,26 +1592,26 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private List<String> getSkillList(int tier) {
         List<String> skills = new ArrayList<>();
         // 基础被动
-        skills.add("§7➤ 动能穿透 (箭矢穿透)");
+        skills.add("§7�?动能穿�?(箭矢穿�?");
 
-        if (tier >= 1) skills.add("§a➤ 极寒弹头 (减速 II)");
-        if (tier >= 2) skills.add("§9➤ 电磁加速 (无视重力)");
+        if (tier >= 1) skills.add("§a�?极寒弹头 (减�?II)");
+        if (tier >= 2) skills.add("§9�?电磁加�?(无视重力)");
         if (tier >= 3) {
-            skills.add("§6➤ 智能引信 (安全爆破)");
-            skills.add("§6➤ 神经毒素 (弱效策反)");
+            skills.add("§6�?智能引信 (安全爆破)");
+            skills.add("§6�?神经毒素 (弱效策反)");
         }
         if (tier >= 4) {
-            skills.add("§5➤ 聚变打击 (雷霆审判)");
-            skills.add("§5➤ 纳米修复 (吸血光环)");
+            skills.add("§5�?聚变打击 (雷霆审判)");
+            skills.add("§5�?纳米修复 (吸血光环)");
         }
         if (tier >= 5) {
-            skills.add("§c➤ 终焉协议 (召唤援军)");
-            skills.add("§c➤ 精神控制 (强效策反)");
+            skills.add("§c�?终焉协议 (召唤援军)");
+            skills.add("§c�?精神控制 (强效策反)");
         }
 
-        // 动态技能
+        // 动态技�?
         if (this.entityData.get(IS_BRUTAL)) {
-            skills.add("§4§k||§r §4[主动] 残暴模式 (400%攻速) §4§k||");
+            skills.add("§4§k||§r §4[主动] 残暴模式 (400%攻�? §4§k||");
         } else if (checkFullBodyEnchanted()) {
             skills.add("§8[就绪] 残暴模式 (等待冷却)");
         }
@@ -1549,7 +1660,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // =========================================================
-    // ✅ 新增逻辑开始
+    // �?新增逻辑开�?
     // =========================================================
 
     // 获取当前等级升级所需杀敌数
@@ -1571,36 +1682,36 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             case 1 -> Items.IRON_INGOT;        // C -> B
             case 2 -> Items.GOLD_INGOT;        // B -> A
             case 3 -> Items.DIAMOND;           // A -> S
-            case 4 -> Items.NETHERITE_SCRAP;   // S -> L (此处为下界合金碎片)
+            case 4 -> Items.NETHERITE_SCRAP;   // S -> L (此处为下界合金碎�?
             default -> Items.ANCIENT_DEBRIS;
         };
     }
 
     // 获取升级所需基础数量
     private int getBaseMaterialCost(int tier) {
-        return (tier == 4) ? 5 : 25; // S->L需要5个，其他25个
+        return (tier == 4) ? 5 : 25; // S->L需�?个，其他25�?
     }
 
     // ==========================================
-    // ✅ 新增：获取升级充能进度 (0-5)
+    // �?新增：获取升级充能进�?(0-5)
     // ==========================================
     public int getUpgradeProgress() {
         return this.entityData.get(UPGRADE_PROGRESS);
     }
     // ==========================================
-    // ✅ 新增：获取杀敌进度百分比 (用于 HUD 显示)
+    // �?新增：获取杀敌进度百分比 (用于 HUD 显示)
     // ==========================================
     public int getKillProgressPercent() {
         int tier = getTier();
-        if (tier >= 5) return 100; // 满级了显示 100%
+        if (tier >= 5) return 100; // 满级了显�?100%
 
-        // 调用内部的获取目标方法
+        // 调用内部的获取目标方�?
         int target = getKillTarget(tier);
         if (target == 0) return 100; // 防止除以0
 
         int kills = getKillCount();
 
-        // 计算百分比 (例如: 杀敌40 / 目标80 = 50%)
+        // 计算百分�?(例如: 杀�?0 / 目标80 = 50%)
         int percent = (int)((float)kills / target * 100);
 
         return Math.min(percent, 100); // 封顶 100%
@@ -1612,38 +1723,38 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     // 获取等级名称
     private String getTierName(int tier) {
-        if (this.entityData.get(IS_BRUTAL)) return "§4§l☠ 终焉·魔神 (暴走)";
+        if (this.entityData.get(IS_BRUTAL)) return "§4§l�?终焉·魔神 (暴走)";
         return switch(tier) {
             case 0 -> "§7[D] 灰烬·哨兵";
             case 1 -> "§a[C] 森罗·游侠";
-            case 2 -> "§9[B] 海渊·狙击手";
-            case 3 -> "§6[A] 赤炎·毁灭者";
+            case 2 -> "§9[B] 海渊·狙击";
+            case 3 -> "§6[A] 赤炎·毁灭";
             case 4 -> "§5[S] 虚空·主宰";
             case 5 -> "§c§l[L] 终焉·魔神";
             default -> "未知";
         };
     }
     // ==========================================
-    // ✅ 新增：获取或生成身份编号
+    // �?新增：获取或生成身份编号
     // ==========================================
     private String getUnitIdString() {
         int id = this.entityData.get(UNIT_ID);
 
-        // 如果还没有编号 (是0)，就随机生成一个 (1-999)
+        // 如果还没有编�?(�?)，就随机生成一�?(1-999)
         if (id == 0) {
             id = this.random.nextInt(999) + 1;
             this.entityData.set(UNIT_ID, id);
         }
 
-        // 格式化为 3位数字 (例如 7 -> "007")
+        // 格式化为 3位数�?(例如 7 -> "007")
         return String.format("%03d", id);
     }
 
     // 更新名字显示
 // 更新名字显示
-// ==================== 📛 【第四步】 名字显示逻辑 ====================
+// ==================== 📛 【第四步�?名字显示逻辑 ====================
     public void updateCustomName() {
-        // 只在服务端运行，防止客户端用默认值覆盖
+        // 只在服务端运行，防止客户端用默认值覆�?
         if (this.level().isClientSide) return;
 
         // 1. 获取等级颜色
@@ -1656,7 +1767,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         // 2. 获取编号 (例如 " #007")
         String idSuffix = " #" + getUnitIdString();
 
-        // 3. ✅ 核心：读取全新的变量 SYNC_BASE_NAME
+        // 3. �?核心：读取全新的变量 SYNC_BASE_NAME
         String currentName = this.entityData.get(SYNC_BASE_NAME);
 
         // 4. 组装名字
@@ -1671,13 +1782,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             finalName = "§8[后备] " + tierColor + currentName + idSuffix;
         }
         else {
-            // 坚守或野生状态
+            // 坚守或野生状�?
             finalName = tierColor + currentName + idSuffix;
         }
 
 
 
-        // 6. 应用到头顶
+        // 6. 应用到头�?
         this.setCustomName(Component.literal(finalName));
     }// 检查杀敌数
     private void checkKillUpgrade() {
@@ -1699,16 +1810,16 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         ItemStack item = player.getItemInHand(hand);
 
 
-        
-        // ==================== 🏷️ 命名卡改名逻辑 (无须Shift) ====================
-        
+
+        // ==================== 🏷�?命名卡改名逻辑 (无须Shift) ====================
+
         // ==================== 🔷 青金石附魔逻辑 (Vanilla-Like) ====================
         if (item.getItem() == Items.LAPIS_LAZULI) {
             if (this.level().isClientSide) {
                 return InteractionResult.SUCCESS;
             }
 
-            // 1. 扫描可附魔装备
+            // 1. 扫描可附魔装�?
             EquipmentSlot[] slots = {
                 net.minecraft.world.entity.EquipmentSlot.MAINHAND,
                 net.minecraft.world.entity.EquipmentSlot.HEAD,
@@ -1731,23 +1842,23 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
 
             if (targetStack.isEmpty()) {
-                player.displayClientMessage(Component.literal("§c[错误] 无可附魔装备或装备已满附魔"), true);
+                player.displayClientMessage(Component.literal("§c[错误] 无可附魔装备或装备已满附"), true);
                 return InteractionResult.FAIL;
             }
 
-            // 2. 确定附魔等级与消耗 (完全对标原版附魔台逻辑)
+            // 2. 确定附魔等级与消�?(完全对标原版附魔台逻辑)
             // 逻辑: 检查玩家背包中的青金石数量 -> 决定附魔档位
-            // 档位 1: 消耗 1 青金石 + 1 经验等级 (需要 10 级) -> 强度 10
-            // 档位 2: 消耗 2 青金石 + 2 经验等级 (需要 20 级) -> 强度 20
-            // 档位 3: 消耗 3 青金石 + 3 经验等级 (需要 30 级) -> 强度 30
-            
+            // 档位 1: 消�?1 青金�?+ 1 经验等级 (需�?10 �? -> 强度 10
+            // 档位 2: 消�?2 青金�?+ 2 经验等级 (需�?20 �? -> 强度 20
+            // 档位 3: 消�?3 青金�?+ 3 经验等级 (需�?30 �? -> 强度 30
+
             int lapisHeld = item.getCount();
             int tier = 0;
             int costLevels = 0;
             int requiredLevels = 0;
             int enchantPower = 0;
 
-            // 优先匹配最高档位
+            // 优先匹配最高档�?
             if (lapisHeld >= 3) {
                 tier = 3;
                 costLevels = 3;
@@ -1765,10 +1876,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 enchantPower = 10;
             }
 
-            // 3. 校验玩家经验 (创造模式跳过)
+            // 3. 校验玩家经验 (创造模式跳�?
             if (!player.getAbilities().instabuild) {
                 if (player.experienceLevel < requiredLevels) {
-                    player.displayClientMessage(Component.literal("§c[条件不足] 需要 " + requiredLevels + " 级经验 (当前: " + player.experienceLevel + ")"), true);
+                    player.displayClientMessage(Component.literal("§c[条件不足] 需�?" + requiredLevels + " 级经�?(当前: " + player.experienceLevel + ")"), true);
                     return InteractionResult.FAIL;
                 }
             }
@@ -1780,31 +1891,31 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
 
             // 5. 执行附魔 (使用原版 Helper)
-            // ✅ 修正：使用玩家的附魔种子，确保与原版机制一致 (虽然没有预览，但保持底层逻辑一致)
+            // �?修正：使用玩家的附魔种子，确保与原版机制一�?(虽然没有预览，但保持底层逻辑一�?
             net.minecraft.util.RandomSource random = net.minecraft.util.RandomSource.create();
             random.setSeed(player.getEnchantmentSeed());
-            
+
             EnchantmentHelper.enchantItem(random, targetStack, enchantPower, false);
             this.setItemSlot(targetSlot, targetStack);
 
-            // ✅ 修正：更新玩家的附魔种子 (防止种子死锁)
+            // �?修正：更新玩家的附魔种子 (防止种子死锁)
             player.onEnchantmentPerformed(targetStack, costLevels);
-            
+
             // 6. 反馈 (声音 + 粒子 + 提示)
             this.playSound(SoundEvents.ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
             if (this.level() instanceof ServerLevel serverLevel) {
                 // 模拟附魔台周围飞向书本的字符粒子
                 serverLevel.sendParticles(ParticleTypes.ENCHANT, this.getX(), this.getY() + 1.8, this.getZ(), 30, 0.5, 0.5, 0.5, 0.1);
             }
-            
-            String msg = String.format("§a[附魔成功] 消耗 %d 青金石/%d 等级 -> %s (Lv.%d)", 
+
+            String msg = String.format("§a[附魔成功] 消�?%d 青金�?%d 等级 -> %s (Lv.%d)",
                 costLevels, costLevels, targetStack.getHoverName().getString(), enchantPower);
             player.sendSystemMessage(Component.literal(msg));
 
             return InteractionResult.SUCCESS;
         }
 
-        // ==================== 🛠️ 传送模块安装逻辑 ====================
+        // ==================== 🛠�?传送模块安装逻辑 ====================
         if (item.getItem() == ExampleMod.TELEPORT_UPGRADE_MODULE.get()) {
             if (!this.hasTeleportModule()) {
                 if (!this.level().isClientSide) {
@@ -1828,17 +1939,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
         }
 
-// ==================== 🏷️ 【第三步】 命名牌改名逻辑 (强制拦截) ====================
+// ==================== 🏷�?【第三步�?命名牌改名逻辑 (强制拦截) ====================
         if (item.getItem() == Items.NAME_TAG) {
-            // 只有当命名牌真的有名字时才生效
+            // 只有当命名牌真的有名字时才生�?
             if (item.hasCustomHoverName()) {
                 String newName = item.getHoverName().getString();
 
-                // 1. 修改全新的同步变量
+                // 1. 修改全新的同步变�?
                 this.entityData.set(SYNC_BASE_NAME, newName);
 
                 // 2. 打印一条日志到后台 (方便排查)
-                System.out.println("DEBUG: 玩家修改炮台名字为 -> " + newName);
+                System.out.println("DEBUG: 玩家修改炮台名字�?-> " + newName);
 
                 // 3. 立即刷新显示
                 updateCustomName();
@@ -1852,22 +1963,22 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             return InteractionResult.CONSUME;
         }
 
-        // ==================== 🎮 普通右键 (打开菜单 / 切换模式) ====================
-        // 迁移自 TurretInteractionHandler，实现逻辑内聚 (Entity-Centric Architecture)
-        
+        // ==================== 🎮 普通右�?(打开菜单 / 切换模式) ====================
+        // 迁移�?TurretInteractionHandler，实现逻辑内聚 (Entity-Centric Architecture)
+
         if (!this.level().isClientSide && hand == InteractionHand.MAIN_HAND) {
-            
+
             // 1. Shift + 右键 (空手) -> 切换跟随/坚守模式
             if (player.isShiftKeyDown() && item.isEmpty()) {
                 boolean newMode = !isFollowMode();
                 setFollowMode(newMode);
-                String status = newMode ? "§a[队伍] 已归队 (跟随)" : "§c[队伍] 已离队 (坚守)";
+                String status = newMode ? "§a[队伍] 已归�?(跟随)" : "§c[队伍] 已离�?(坚守)";
                 player.sendSystemMessage(Component.literal(status));
                 this.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                 return InteractionResult.SUCCESS;
             }
 
-            // 2. 普通右键 (非潜行) -> 打开菜单
+            // 2. 普通右�?(非潜�? -> 打开菜单
             if (!player.isShiftKeyDown()) {
                 if (player instanceof ServerPlayer serverPlayer) {
                     updateInfoBookAndSlots();
@@ -1879,7 +1990,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 return InteractionResult.SUCCESS;
             }
         }
-        
+
         return super.mobInteract(player, hand);
     }
 
@@ -1919,7 +2030,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         String newAbility = getNewAbilityDesc(newTier);
         this.level().players().forEach(p -> {
             if (p.distanceToSqr(this) < 400) {
-                p.sendSystemMessage(Component.literal("§6✦ 升级完成！§f" + this.getDisplayName().getString()));
+                p.sendSystemMessage(Component.literal("§6�?升级完成！§f" + this.getDisplayName().getString()));
                 p.sendSystemMessage(Component.literal("§a  解锁能力: " + newAbility));
             }
         });
@@ -1927,17 +2038,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     public String getNewAbilityDesc(int tier) {
         return switch (tier) {
-            case 1 -> "§a寒冰射击 (攻击附带减速)";
-            case 2 -> "§9直线狙击 (箭矢无重力)";
+            case 1 -> "§a寒冰射击 (攻击附带减�?";
+            case 2 -> "§9直线狙击 (箭矢无重�?";
             case 3 -> "§6安全爆裂 (范围AOE不伤友军)";
             case 4 -> "§5雷霆审判 & 吸血光环";
-            case 5 -> "§c终焉·魔神 (召唤暴走感染体)";
+            case 5 -> "§c终焉·魔神 (召唤暴走感染�?";
             default -> "未知力量";
         };
     }
 
 
-    // 更新装备和属性
+    // 更新装备和属�?
     public void updateStatsAndEquip() {
         int tier = getTier();
         updateCustomName();
@@ -1949,7 +2060,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, ItemStack.EMPTY);
 
         switch (tier) {
-            case 0: // D级 - 灰烬 (全套皮甲)
+            case 0: // D�?- 灰烬 (全套皮甲)
                 maxHp = 20.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.LEATHER_CHESTPLATE));
@@ -1957,7 +2068,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, new ItemStack(Items.LEATHER_BOOTS));
                 break;
 
-            case 1: // C级 - 森罗 (全套铁甲)
+            case 1: // C�?- 森罗 (全套铁甲)
                 maxHp = 50.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
@@ -1965,7 +2076,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
                 break;
 
-            case 2: // B级 - 海渊 (全套金甲)
+            case 2: // B�?- 海渊 (全套金甲)
                 maxHp = 100.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.GOLDEN_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.GOLDEN_CHESTPLATE));
@@ -1973,7 +2084,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, new ItemStack(Items.GOLDEN_BOOTS));
                 break;
 
-            case 3: // A级 - 赤炎 (全套钻甲)
+            case 3: // A�?- 赤炎 (全套钻甲)
                 maxHp = 150.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
@@ -1981,7 +2092,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
                 break;
 
-            case 4: // S级 - 虚空 (全套下界合金)
+            case 4: // S�?- 虚空 (全套下界合金)
                 maxHp = 250.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.NETHERITE_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.NETHERITE_CHESTPLATE));
@@ -1989,7 +2100,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, new ItemStack(Items.NETHERITE_BOOTS));
                 break;
 
-            case 5: // L级 - 终焉 (全套下界合金 + 可能的鞘翅或其他装饰)
+            case 5: // L�?- 终焉 (全套下界合金 + 可能的鞘翅或其他装饰)
                 maxHp = 500.0;
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.NETHERITE_HELMET));
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.NETHERITE_CHESTPLATE));
@@ -1998,7 +2109,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 break;
         }
 
-        // ✅ 继承旧弓附魔逻辑
+        // �?继承旧弓附魔逻辑
         ItemStack oldBow = this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND);
         ItemStack newBow = new ItemStack(Items.BOW);
         if (oldBow.isEnchanted()) {
@@ -2006,8 +2117,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
         this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, newBow);
 
-        // ✅ 同步属性到 Attribute 系统 (确保 UI 显示正确)
-        // 1. 生命值
+        // �?同步属性到 Attribute 系统 (确保 UI 显示正确)
+        // 1. 生命�?
         Objects.requireNonNull(this.getAttribute(Attributes.MAX_HEALTH)).setBaseValue(maxHp);
         this.setHealth((float) maxHp);
 
@@ -2027,29 +2138,29 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public void incrementKillCount() {
         this.entityData.set(KILL_COUNT, this.entityData.get(KILL_COUNT) + 1);
 
-        // ✅ 新增：如果是清剿模式，单独记账
+        // �?新增：如果是清剿模式，单独记�?
         if (this.isPurgeActive()) {
             this.purgeKillCount++;
         }
 
         checkKillUpgrade();
     }
-    // 开启清剿模式 (由 ExampleMod 调用)
+    // 开启清剿模�?(�?ExampleMod 调用)
     public void startPurgeMode(float angle) {
         this.entityData.set(IS_PURGE_ACTIVE, true);
         this.purgeKillCount = 0; // 业绩归零
         this.purgeSearchAngle = angle; // 领受任务方向
-        this.setCommandScavenging(false); // 停止捡垃圾
+        this.setCommandScavenging(false); // 停止捡垃�?
 
 
-// 随机选一句台词
+// 随机选一句台�?
         String quote = PURGE_QUOTES[this.random.nextInt(PURGE_QUOTES.length)];
 
-        // ✅ 修复：直接发给主人，不再在大范围内广播 (防止发不出来)
+        // �?修复：直接发给主人，不再在大范围内广�?(防止发不出来)
         if (!this.level().isClientSide && this.ownerUUID != null) {
             Player owner = this.level().getPlayerByUUID(this.ownerUUID);
             if (owner != null) {
-                // 格式：<先锋小队> 收到指令，正在清场！
+                // 格式�?先锋小队> 收到指令，正在清场！
                 owner.sendSystemMessage(Component.literal("§e<" + this.getDisplayName().getString() + "> §f" + quote));
             }
         }
@@ -2066,7 +2177,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (this.ownerUUID != null && !this.level().isClientSide) {
             Player owner = this.level().getPlayerByUUID(this.ownerUUID);
             if (owner != null) {
-                owner.sendSystemMessage(Component.literal("§a[报告] " + this.getDisplayName().getString() + " §a搜索结束，已击杀敌: §c" + this.purgeKillCount + "名"));
+                owner.sendSystemMessage(Component.literal("§a[报告] " + this.getDisplayName().getString() + " §a搜索结束，已击杀�? §c" + this.purgeKillCount ));
             }
         }
         this.purgeKillCount = 0;
@@ -2076,7 +2187,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     public int getKillCount() { return this.entityData.get(KILL_COUNT); }
     // ==========================================
-    // ⚙️ 射程配置表 (模拟服务器配置/接口)
+    // ⚙️ 射程配置�?(模拟服务器配�?接口)
     // ==========================================
     private static final Map<Integer, Double> RANGE_CONFIG = new HashMap<>();
     static {
@@ -2087,43 +2198,43 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         RANGE_CONFIG.put(5, 256.0);
     }
 
-    // ✅ 射程控制
+    // �?射程控制
     public int getRangeLevel() {
         return getTier() + 1;
     }
 
 
-    // ✅ 更新属性的具体实现
+    // �?更新属性的具体实现
     public void updateRangeAttribute() {
         double range = getAttackRange();
-        
-        // 确保属性实例存在
+
+        // 确保属性实例存�?
         var attributeInstance = this.getAttribute(Attributes.FOLLOW_RANGE);
         if (attributeInstance != null) {
-            // 只有数值不同时才更新 (减少网络包)
+            // 只有数值不同时才更�?(减少网络�?
             if (Math.abs(attributeInstance.getBaseValue() - range) > 0.01) {
                 attributeInstance.setBaseValue(range);
             }
         }
     }
-    
+
     public double getAttackRange() {
         int level = getRangeLevel();
-        
+
         // 4. 异常处理：如果配置缺失，尝试回退
         if (!RANGE_CONFIG.containsKey(level)) {
             System.err.println("[Error] Missing range config for level " + level + ", using default.");
-            return 20.0; // 默认值
+            return 20.0; // 默认�?
         }
-        
+
         return RANGE_CONFIG.get(level);
     }
-    
+
     public int getTier() {
         return this.entityData.get(TIER);
     }
-    public void setTier(int tier) { 
-        this.entityData.set(TIER, tier); 
+    public void setTier(int tier) {
+        this.entityData.set(TIER, tier);
         this.updateRangeAttribute(); // Auto-update range
     }
 
@@ -2131,7 +2242,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public void addAdditionalSaveData(CompoundTag tag) {
 
         tag.putBoolean("FollowMode", this.isFollowMode());
-        // ✅ 【第五步A】 保存新变量
+        // �?【第五步A�?保存新变�?
         tag.putInt("UnitID", this.entityData.get(UNIT_ID));
         // RangeLevel not saved (derived)
         tag.putString("CustomBaseName", this.entityData.get(SYNC_BASE_NAME));
@@ -2142,7 +2253,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         // Save Teleport Module Data
         tag.putBoolean("HasTeleportModule", this.hasTeleportModule());
         tag.putInt("TeleportCooldown", this.teleportCooldown);
-        
+
         super.addAdditionalSaveData(tag);
         tag.putInt("TurretTier", getTier());
         tag.putBoolean("IsFollowing", this.entityData.get(IS_FOLLOWING));
@@ -2166,30 +2277,31 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
         tag.put("Inventory", itemList);
     }
-    // ==================== ⚔ 清剿模式核心变量 ====================
+    // ==================== �?清剿模式核心变量 ====================
     // 是否处于清剿模式
     public boolean isPurgeActive() {
         return this.entityData.get(IS_PURGE_ACTIVE);
     }
     // 本次清剿杀了多少个
     public int purgeKillCount = 0;
-    // 我的搜索角度 (0-360度)
+    // 我的搜索角度 (0-360�?
     private float purgeSearchAngle = 0.0f;
 
-    // 敢死队台词库 (50句)
+    // 敢死队台词库 (50�?
     private static final String[] PURGE_QUOTES = {
+            // 修改后的台词列表，注意每一句都用英文引号包围，用英文逗号分隔
             "行动代号：焦土，执行中！", "收到指令，正在清场！", "一个都别想跑！", "区域净化程序已启动。",
-            "为了指挥官的荣耀，杀！", "正在执行毁灭性打击！", "目视范围内，不允许存在活物。", "猎杀时刻到了！",
+            "为了指挥官的荣耀，杀！", "正在执行毁灭性打击！", "目视范围内，不允许存在活物。", "猎杀时刻到了。",
             "全弹发射，覆盖射击！", "正在执行最高级别清洗。", "杂碎们，迎接审判吧！", "不再仁慈，不再犹豫！",
-            "地毯式搜索，不留死角！", "任何阻挡者，死！", "正在移除所有碳基生物。", "让这片土地重归寂静。",
+            "地毯式搜索，不留死角。", "任何阻挡者，死！", "正在移除所有碳基生物。", "让这片土地重归寂静。",
             "清理害虫，就在此刻。", "敢死队，冲锋！", "把它们撕成碎片！", "火力全开，寸草不生！",
-            "收割生命的时间到了。", "正在重写区域生态。", "恐惧吧，逃跑吧，然后死吧！", "没有任何东西能幸存。",
+            "收割生命的时间到了。", "正在重写区域生态。", "恐惧吧，逃跑吧，然后死吧。", "没有任何东西能幸存。",
             "正在执行死刑判决。", "让火焰净化一切！", "这就是战争！", "没有人能逃脱我的准星。",
-            "毁灭，只是开始。", "正在抹除所有敌对目标。", "为了绝对的秩序！", "障碍清除中...",
-            "正在执行种族灭绝协议。", "这片区域将被鲜血染红。", "狩猎愉快，兄弟们！", "把它们全部送入虚空！",
-            "正在执行第66号令。", "绝不留情，绝不手软！", "死亡如风，常伴吾身。", "正在清空弹夹...",
+            "毁灭，只是开始。", "正在抹除所有敌对目标。", "为了绝对的秩序！", "障碍清除...",
+            "正在执行种族灭绝协议。", "这片区域将被鲜血染红。", "狩猎愉快，兄弟们。", "把它们全部送入虚空。",
+            "正在执行66号令。", "绝不留情，绝不手软！", "死亡如风，常伴吾身。", "正在清空弹夹...",
             "目标确认：所有活物。", "正在制造尸山血海。", "让它们见识真正的恐惧。", "正在执行强制拆除。",
-            "为了主人的意志，杀戮！", "正在执行终极清理。", "无论是谁，格杀勿论！", "毁灭倒计时开始。",
+            "为了主人的意志，杀戮！", "正在执行终极清理。", "无论是谁，格杀勿论。", "毁灭倒计时开始。",
             "正在执行焦土政策。", "任务：杀光一切。"
     };
 
@@ -2212,7 +2324,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (tag.contains("CustomBaseName")) {
             this.entityData.set(SYNC_BASE_NAME, tag.getString("CustomBaseName"));
         } else if (tag.contains("TurretBaseName")) {
-            // 如果是旧存档，把旧名字迁移过来
+            // 如果是旧存档，把旧名字迁移过�?
             this.entityData.set(SYNC_BASE_NAME, tag.getString("TurretBaseName"));
         }
         if (tag.contains("TurretBaseName")) {
@@ -2253,10 +2365,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // ==========================================
-    // ✅ 核心：从记录卡恢复完整数据 (Phase 3)
+    // �?核心：从记录卡恢复完整数�?(Phase 3)
     // ==========================================
     public void restoreFromRecord(CompoundTag dataTag) {
-        // 1. 基础属性
+        // 1. 基础属�?
         if (dataTag.contains("UnitID")) this.entityData.set(UNIT_ID, dataTag.getInt("UnitID"));
         if (dataTag.contains("Tier")) this.setTier(dataTag.getInt("Tier"));
         if (dataTag.contains("Heat")) this.entityData.set(DATA_HEAT, dataTag.getInt("Heat"));
@@ -2266,7 +2378,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (dataTag.contains("UpgradeProgress")) this.entityData.set(UPGRADE_PROGRESS, dataTag.getInt("UpgradeProgress"));
         if (dataTag.contains("KillCount")) this.entityData.set(KILL_COUNT, dataTag.getInt("KillCount"));
 
-        // 1.1 恢复主人和名字
+        // 1.1 恢复主人和名�?
         if (dataTag.hasUUID("OwnerUUID")) {
             this.ownerUUID = dataTag.getUUID("OwnerUUID");
             this.entityData.set(OWNER_UUID_SYNC, Optional.of(this.ownerUUID));
@@ -2274,7 +2386,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (dataTag.contains("BaseName")) {
             this.entityData.set(SYNC_BASE_NAME, dataTag.getString("BaseName"));
         }
-        // 强制刷新一次名字
+        // 强制刷新一次名�?
         updateCustomName();
 
         // 2. 恢复背包
@@ -2291,11 +2403,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
 
         // 3. 恢复装备槽位
-        // 先清空现有装备 (以防万一)
+        // 先清空现有装�?(以防万一)
         for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
             this.setItemSlot(slot, ItemStack.EMPTY);
         }
-        
+
         if (dataTag.contains("Equipment")) {
             ListTag equipmentList = dataTag.getList("Equipment", 10);
             for (int i = 0; i < equipmentList.size(); i++) {
@@ -2307,11 +2419,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 }
             }
         }
-        
-        // 4. 刷新属性
+
+        // 4. 刷新属�?
         this.updateStatsAndEquip();
-        
-        // 5. [Fix] 物理状态重置 (防止复活后悬空/无重力)
+
+        // 5. [Fix] 物理状态重�?(防止复活后悬�?无重�?
         this.setNoGravity(false);
         this.resetFallDistance();
         this.setDeltaMovement(0, -0.1, 0); // 给予微小向下速度触发接地判断
@@ -2321,24 +2433,24 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     @Override protected boolean isSunBurnTick() { return false; }
     @Override
     public boolean isPushable() {
-        // 打印中不能被推
+        // 打印中不能被�?
         if (getPrintState() != 0) return false;
         return this.entityData.get(IS_FOLLOWING);
     }
 
     // ==========================================================
-    // ✅ 强力驻守模式：防消失 + 区块强加载
+    // �?强力驻守模式：防消失 + 区块强加�?
     // ==========================================================
 
 
 
 // ==========================================================
-    // ✅ 强力驻守模式：防消失 + 区块强加载
+    // �?强力驻守模式：防消失 + 区块强加�?
     // ==========================================================
 
-    // 记录上一次所在的区块位置 (这个变量必须定义在类里，如果你还没定义，请去文件最上面定义它)
+    // 记录上一次所在的区块位置 (这个变量必须定义在类里，如果你还没定义，请去文件最上面定义�?
     // private net.minecraft.world.level.ChunkPos keptChunkPos;
-    // (如果你上面已经定义了 keptChunkPos，就不用管这行注释)
+    // (如果你上面已经定义了 keptChunkPos，就不用管这行注�?
 
     @Override
     public boolean removeWhenFarAway(double distanceToClosestPlayer) {
@@ -2348,10 +2460,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     @Override
     public void aiStep() {
         super.aiStep();
-        
 
 
-        // 只在服务端执行
+
+        // 只在服务端执�?
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             net.minecraft.world.level.ChunkPos currentPos = this.chunkPosition();
             ServerLevel sl = (ServerLevel) this.level();
@@ -2364,7 +2476,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 keptChunkPos = currentPos;
             }
         }
-    } // 🟢 这里的 } 必须有！结束 aiStep 方法
+    } // 🟢 这里�?} 必须有！结束 aiStep 方法
 
     @Override
     public void remove(RemovalReason reason) {
@@ -2373,12 +2485,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             keptChunkPos = null;
         }
         super.remove(reason);
-    } // 🟢 这里的 } 必须有！结束 remove 方法
+    } // 🟢 这里�?} 必须有！结束 remove 方法
 
-    // 👇 下面应该是 TurretFollowGoal，千万不要把它包进上面的方法里！
+    // 👇 下面应该�?TurretFollowGoal，千万不要把它包进上面的方法里！
 
     // ==========================================
-    // ✅ 优化：智能跟随 AI (Smart Pathfinding & Decision Making)
+    // �?优化：智能跟�?AI (Smart Pathfinding & Decision Making)
     // ==========================================
     static class TurretFollowGoal extends Goal {
         private final SkeletonTurret turret;
@@ -2386,19 +2498,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         private final double speedModifier;
         private final float startDistance;
         private final float stopDistance;
-        
+
         // AI State
         private int timeToRecalculatePath;
-        private int thinkingTicks;      // 思考停顿计时
+        private int thinkingTicks;      // 思考停顿计�?
         private int stuckTimer;         // 卡死判定计时
         private net.minecraft.world.phys.Vec3 lastStuckCheckPos;
         private int pathFailures;       // 路径计算失败次数
         // private boolean isSprinting;    // Removed unused variable
 
         // Constants
-        private static final int THINKING_DURATION = 15; // 0.75s 思考时间
-        private static final int MAX_STUCK_TIME = 40;    // 2s 卡死则触发脱困
-        
+        private static final int THINKING_DURATION = 15; // 0.75s 思考时�?
+        private static final int MAX_STUCK_TIME = 40;    // 2s 卡死则触发脱�?
+
         public TurretFollowGoal(SkeletonTurret turret, double speed, float start, float stop) {
             this.turret = turret;
             this.speedModifier = speed;
@@ -2419,14 +2531,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         public boolean canUse() {
             LivingEntity owner = this.turret.getOwner();
             if (owner == null) return false;
-            
-            // 状态检查
+
+            // 状态检�?
             if (!this.turret.isFollowing()) return false;
             if (this.turret.isPurgeActive()) return false;
             if (this.turret.isCommandScavenging()) return false;
             if (owner.isSpectator()) return false;
 
-            // 距离检查
+            // 距离检�?
             if (this.turret.distanceToSqr(owner) < (double)(this.startDistance * this.startDistance)) return false;
 
             this.owner = owner;
@@ -2439,7 +2551,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             if (this.turret.isPurgeActive()) return false;
             if (this.turret.isCommandScavenging()) return false;
             if (this.turret.getNavigation().isDone()) return false;
-            
+
             return this.turret.distanceToSqr(this.owner) > (double)(this.stopDistance * this.stopDistance);
         }
 
@@ -2456,7 +2568,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         public void tick() {
             this.turret.getLookControl().setLookAt(this.owner, 10.0F, (float)this.turret.getMaxHeadXRot());
 
-            // 0. 思考状态 (模拟停顿观察)
+            // 0. 思考状�?(模拟停顿观察)
             if (this.thinkingTicks > 0) {
                 this.thinkingTicks--;
                 this.turret.getNavigation().stop();
@@ -2467,14 +2579,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             double dist = Math.sqrt(distSqr);
             double yDiff = Math.abs(this.owner.getY() - this.turret.getY());
 
-            // 1. 传送决策 (Priority 1: Teleport)
-            // 触发条件：有模块 & (卡死 OR 距离过远 OR 高度差过大)
-            boolean needTeleport = (this.stuckTimer > MAX_STUCK_TIME) 
-                                || (dist > 32.0) 
+            // 1. 传送决�?(Priority 1: Teleport)
+            // 触发条件：有模块 & (卡死 OR 距离过远 OR 高度差过�?
+            boolean needTeleport = (this.stuckTimer > MAX_STUCK_TIME)
+                                || (dist > 32.0)
                                 || (yDiff > 2.5 && dist < 8.0 && !this.turret.getNavigation().isInProgress());
-                                
+
             if (needTeleport && tryTeleport()) {
-                return; // 传送成功，本 tick 结束
+                return; // 传送成功，�?tick 结束
             }
 
             // 2. 移动模式切换 (Walk/Sprint)
@@ -2488,9 +2600,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             // 3. 路径规划 (LOD & Adaptive Frequency)
             if (--this.timeToRecalculatePath <= 0) {
                 // 根据距离调整计算频率 (LOD)
-                // 远距离(>20): 40 ticks (2s)
-                // 中距离(>10): 20 ticks (1s)
-                // 近距离(<10): 10 ticks (0.5s)
+                // 远距�?>20): 40 ticks (2s)
+                // 中距�?>10): 20 ticks (1s)
+                // 近距�?<10): 10 ticks (0.5s)
                 if (dist > 20) this.timeToRecalculatePath = 40;
                 else if (dist > 10) this.timeToRecalculatePath = 20;
                 else this.timeToRecalculatePath = 10;
@@ -2499,8 +2611,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 if (!this.turret.getNavigation().moveTo(this.owner, this.speedModifier)) {
                     // 路径计算失败
                     this.pathFailures++;
-                    
-                    // 连续失败 2 次 -> 进入思考状态 (模拟观察地形)
+
+                    // 连续失败 2 �?-> 进入思考状�?(模拟观察地形)
                     if (this.pathFailures >= 2) {
                         this.thinkingTicks = THINKING_DURATION + this.turret.getRandom().nextInt(10); // 0.75s - 1.25s
                         this.pathFailures = 0; // 重置计数
@@ -2508,11 +2620,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 } else {
                     // 路径计算成功
                     this.pathFailures = 0;
-                    
-                    // 模拟"非最优路径"决策 (Randomness 15-25%)
-                    // 偶尔故意停顿一下，显得像人在犹豫
-                    if (this.turret.getRandom().nextFloat() < 0.02f) { // 2% 概率每 tick (实际在路径更新时判定)
-                         this.thinkingTicks = 10; 
+
+                    // 模拟"非最优路�?决策 (Randomness 15-25%)
+                    // 偶尔故意停顿一下，显得像人在犹�?
+                    if (this.turret.getRandom().nextFloat() < 0.02f) { // 2% 概率�?tick (实际在路径更新时判定)
+                         this.thinkingTicks = 10;
                     }
                 }
             }
@@ -2523,30 +2635,30 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         private boolean tryTeleport() {
             if (!this.turret.hasTeleportModule()) return false;
-            // 检查冷却 (假设 SkeletonTurret 有 public int teleportCooldown 或者 getter)
-            // 这里我们使用反射出来的字段或假设已修复访问权限
-            // 根据之前的 grep，teleportCooldown 是 private 且没有 getter，但有 setTeleportCooldown
-            // 我们需要修改 SkeletonTurret 添加 getTeleportCooldown() 或者将字段改为 public
-            // *为了稳妥，这里先用反射或者假设我能修改 SkeletonTurret*
-            // 实际上我可以直接修改 SkeletonTurret 来添加访问器。
-            
-            // 暂时假设: 我会添加一个 public int getTeleportCooldown() 到 SkeletonTurret
+            // 检查冷�?(假设 SkeletonTurret �?public int teleportCooldown 或�?getter)
+            // 这里我们使用反射出来的字段或假设已修复访问权�?
+            // 根据之前�?grep，teleportCooldown �?private 且没�?getter，但�?setTeleportCooldown
+            // 我们需要修�?SkeletonTurret 添加 getTeleportCooldown() 或者将字段改为 public
+            // *为了稳妥，这里先用反射或者假设我能修�?SkeletonTurret*
+            // 实际上我可以直接修改 SkeletonTurret 来添加访问器�?
+
+            // 暂时假设: 我会添加一�?public int getTeleportCooldown() �?SkeletonTurret
             if (this.turret.getTeleportCooldown() > 0) return false;
 
-            // 执行传送
+            // 执行传�?
             double targetX = this.owner.getX() + (this.turret.getRandom().nextDouble() - 0.5) * 2.0;
             double targetY = this.owner.getY();
             double targetZ = this.owner.getZ() + (this.turret.getRandom().nextDouble() - 0.5) * 2.0;
-            
+
             // 简单的传送逻辑 (调用原版 randomTeleport 变体)
             if (this.turret.randomTeleport(targetX, targetY, targetZ, true)) {
-                this.turret.notifyTeleport(); // 播放特效和声音
-                
-                // 计算新冷却: 60 - Tier * 10 (Min 10)
+                this.turret.notifyTeleport(); // 播放特效和声�?
+
+                // 计算新冷�? 60 - Tier * 10 (Min 10)
                 int tier = this.turret.getTier();
                 int cooldown = Math.max(10, 60 - tier * 10);
                 this.turret.setTeleportCooldown(cooldown);
-                
+
                 this.stuckTimer = 0; // 重置卡死
                 this.turret.getNavigation().stop();
                 return true;
@@ -2555,7 +2667,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
 
         private void checkStuckAndJump() {
-            // 每 4 tick 检查一次
+            // �?4 tick 检查一�?
             if (this.turret.tickCount % 4 != 0) return;
 
             net.minecraft.world.phys.Vec3 currentPos = this.turret.position();
@@ -2568,41 +2680,41 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.lastStuckCheckPos = currentPos;
             }
 
-            // 智能跳跃：水平碰撞且在地面 -> 跳
+            // 智能跳跃：水平碰撞且在地�?-> �?
             if (this.turret.horizontalCollision && this.turret.onGround()) {
                  this.turret.getJumpControl().jump();
-                 // 如果卡住时间较长，尝试加大跳跃力度 (通过给予向上的速度)
+                 // 如果卡住时间较长，尝试加大跳跃力�?(通过给予向上的速度)
                  if (this.stuckTimer > 20) {
                      this.turret.setDeltaMovement(this.turret.getDeltaMovement().add(0, 0.1, 0));
                  }
             }
-            
-            // 沟壑跳跃检测 (简单的)
-            // 检测前方是否是空气，且远处有方块
-            // 这部分比较复杂，Vanilla AI 通常靠 PathNavigation 处理跳跃
-            // 这里我们主要依赖 PathNavigation，但在 Stuck 时辅助跳跃
+
+            // 沟壑跳跃检�?(简单的)
+            // 检测前方是否是空气，且远处有方�?
+            // 这部分比较复杂，Vanilla AI 通常�?PathNavigation 处理跳跃
+            // 这里我们主要依赖 PathNavigation，但�?Stuck 时辅助跳�?
         }
     }
 
     // ==========================================
-    // ✅ 修复：射击执行逻辑 (带射程锁 & 完整定义)
+    // �?修复：射击执行逻辑 (带射程锁 & 完整定义)
     // ==========================================
     static class RampUpBowAttackGoal extends Goal {
-        // 1. 补回丢失的变量
+        // 1. 补回丢失的变�?
         private final SkeletonTurret mob;
         private int attackTime = -1;
 
-        // 2. 补回丢失的构造函数 (现在可以接收参数了)
+        // 2. 补回丢失的构造函�?(现在可以接收参数�?
         public RampUpBowAttackGoal(SkeletonTurret mob) {
             this.mob = mob;
             this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
 
-        // 3. 补回丢失的 canUse 方法 (没有它 AI 跑不起来)
+        // 3. 补回丢失�?canUse 方法 (没有�?AI 跑不起来)
         @Override
         public boolean canUse() {
-            if (mob.overheatCooldown > 0) return false;      // 过热不能射
-            if (mob.postTeleportAttackDelay > 0) return false; // ✅ 传送后延迟 (0.2s)
+            if (mob.overheatCooldown > 0) return false;      // 过热不能�?
+            if (mob.postTeleportAttackDelay > 0) return false; // �?传送后延迟 (0.2s)
             return this.mob.getTarget() != null;             // 有目标才能射
         }
 
@@ -2610,19 +2722,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         public void start() {
             super.start();
             this.attackTime = -1;
-            this.mob.getNavigation().stop(); // ✅ 立即停车
+            this.mob.getNavigation().stop(); // �?立即停车
         }
 
-        // 4. 核心逻辑 (带射程检查)
+        // 4. 核心逻辑 (带射程检�?
         @Override
         public void tick() {
             LivingEntity target = this.mob.getTarget();
             if (target == null) return;
 
-            // ✅ 强制站桩 (每帧都停，防止被其他因素推动)
+            // �?强制站桩 (每帧都停，防止被其他因素推动)
             this.mob.getNavigation().stop();
 
-            // --- 🛑 射程锁 (新增) ---
+            // --- 🛑 射程�?(新增) ---
             double distSqr = this.mob.distanceToSqr(target);
             double attackRange = this.mob.getAttackRange();
 
@@ -2646,7 +2758,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 boolean isSmart = mob.getTier() >= 2;
                 boolean canSee = this.mob.getSensing().hasLineOfSight(target);
 
-                // 只有在射程内(前面已查) 且 (能看见/聪明/贴脸) 时才开火
+                // 只有在射程内(前面已查) �?(能看�?聪明/贴脸) 时才开�?
                 if (canSee || isSmart || isClose) {
                     this.mob.performRangedAttack(target, 1.0F);
                     this.attackTime = minCd;
@@ -2654,10 +2766,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
         }
     }    // ==========================================
-    // ✅ 新增：火把照明系统 (自动副手装备)
+    // �?新增：火把照明系�?(自动副手装备)
     // ==========================================
     private void manageTorchBehavior() {
-        // 1. 扫描背包，看有没有火把
+        // 1. 扫描背包，看有没有火�?
         boolean hasTorch = false;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             if (inventory.getItem(i).is(Items.TORCH)) {
@@ -2668,25 +2780,25 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         ItemStack currentOffhand = this.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND);
 
-        // 2. 如果有火把
+        // 2. 如果有火�?
         if (hasTorch) {
-            // 如果手上拿的不是火把，赶紧换成火把
+            // 如果手上拿的不是火把，赶紧换成火�?
             if (!currentOffhand.is(Items.TORCH)) {
                 this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, new ItemStack(Items.TORCH));
             }
 
-            // 视觉特效：每隔几秒冒一点火星，增加氛围感
+            // 视觉特效：每隔几秒冒一点火星，增加氛围�?
             if (this.level().isClientSide && this.tickCount % 10 == 0) {
                 double offsetX = -Math.sin(this.getYRot() * ((float)Math.PI / 180F)) * 0.4;
                 double offsetZ = Math.cos(this.getYRot() * ((float)Math.PI / 180F)) * 0.4;
                 this.level().addParticle(ParticleTypes.FLAME, this.getX() + offsetX, this.getY() + 1.5, this.getZ() + offsetZ, 0, 0, 0);
             }
         }
-        // 3. 如果没火把 (或者火把被拿走了)
+        // 3. 如果没火�?(或者火把被拿走�?
         else {
-            // 如果手上还傻傻拿着火把，赶紧放下
+            // 如果手上还傻傻拿着火把，赶紧放�?
             if (currentOffhand.is(Items.TORCH)) {
-                // 恢复原有的装备：B级(2)以上应该拿盾牌，否则空手
+                // 恢复原有的装备：B�?2)以上应该拿盾牌，否则空手
                 if (getTier() >= 2) {
                     this.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
                 } else {
@@ -2696,20 +2808,20 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
     }
     // ==========================================
-    // ✅ 新增：RPG 附魔系统辅助方法
+    // �?新增：RPG 附魔系统辅助方法
     // ==========================================
 
     // 辅助：给指定物品增加 1 个随机新附魔
     private void addRandomEnchantment(ItemStack stack) {
         if (stack.isEmpty()) return;
 
-        // 1. 获取当前已有的附魔
+        // 1. 获取当前已有的附�?
         Map<net.minecraft.world.item.enchantment.Enchantment, Integer> currentEnchants = EnchantmentHelper.getEnchantments(stack);
 
-        // 2. 从游戏所有附魔中筛选出能用的
+        // 2. 从游戏所有附魔中筛选出能用�?
         List<net.minecraft.world.item.enchantment.Enchantment> possible = new ArrayList<>();
         for (net.minecraft.world.item.enchantment.Enchantment ench : net.minecraftforge.registries.ForgeRegistries.ENCHANTMENTS) {
-            // 条件：物品支持这个附魔 && 当前没有这个附魔 && 不与现有附魔冲突
+            // 条件：物品支持这个附�?&& 当前没有这个附魔 && 不与现有附魔冲突
             if (ench.canEnchant(stack) && !currentEnchants.containsKey(ench)) {
                 boolean compatible = true;
                 for (net.minecraft.world.item.enchantment.Enchantment existing : currentEnchants.keySet()) {
@@ -2772,7 +2884,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
         return true;
     }
-    // ✅ 补充这个方法，允许外部读取主人UUID
+    // �?补充这个方法，允许外部读取主人UUID
     public UUID getOwnerUUID() {
         return this.ownerUUID;
     }
@@ -2780,6 +2892,18 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public void setOwner(Player player) {
         this.ownerUUID = player.getUUID();
         this.entityData.set(OWNER_UUID_SYNC, Optional.of(this.ownerUUID));
+    }
+
+    public int getTeleportModuleLevel() {
+        return this.teleportModuleLevel;
+    }
+
+    public int getMultiShotLevel() {
+        return this.multiShotLevel;
+    }
+
+    public int getBlackHoleCooldown() {
+        return this.blackHoleCooldown;
     }
 
     public boolean isBrutal() {
@@ -2797,6 +2921,62 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public void setFatalHitCount(int count) {
         this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, Math.max(0, count));
     }
+
+    public boolean hasDroppedRecord() {
+        return this.deathRecordDropped;
+    }
+
+    public void setDroppedRecord(boolean dropped) {
+        this.deathRecordDropped = dropped;
+    }
+
+    public ItemStack createDeathRecordCard(int fatalHitCount) {
+        ItemStack card = new ItemStack(ExampleMod.DEATH_RECORD_ITEM.get());
+        card.setCount(1);
+        card.setTag(DeathPlaqueDataCodec.buildFromTurret(this, Math.max(1, fatalHitCount)));
+        return card;
+    }
+
+    public void onTeleportCompleted(net.minecraft.world.phys.Vec3 startPos, boolean damageTriggered) {
+        if (!damageTriggered || this.level().isClientSide) {
+            return;
+        }
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        int level = this.teleportModuleLevel;
+        if (level < 3) {
+            return;
+        }
+        if (this.blackHoleCooldown > 0) {
+            return;
+        }
+
+        double range = TeleportModuleRules.blackHoleRangeForLevel(level) * TurretConfig.COMMON.blackHoleRangeScale.get();
+        if (range <= 0.0) {
+            return;
+        }
+
+        int cooldown = (int) Math.max(0, Math.round(
+                TeleportModuleRules.blackHoleCooldownTicksForLevel(level) * TurretConfig.COMMON.blackHoleCooldownScale.get()
+        ));
+        this.blackHoleCooldown = cooldown;
+        this.blackHoleActiveTicks = 20;
+        this.blackHoleCenter = startPos;
+
+        // Start burst: make black-hole trigger obvious to nearby players.
+        serverLevel.sendParticles(ParticleTypes.PORTAL, startPos.x, startPos.y + 0.25, startPos.z,
+                120, range * 0.20, 0.45, range * 0.20, 0.08);
+        serverLevel.sendParticles(ParticleTypes.ENCHANT, startPos.x, startPos.y + 0.15, startPos.z,
+                80, range * 0.24, 0.35, range * 0.24, 0.04);
+        serverLevel.sendParticles(ParticleTypes.SMOKE, startPos.x, startPos.y + 0.20, startPos.z,
+                60, range * 0.20, 0.30, range * 0.20, 0.02);
+        serverLevel.playSound(null, startPos.x, startPos.y, startPos.z, SoundEvents.ENDERMAN_TELEPORT,
+                net.minecraft.sounds.SoundSource.HOSTILE, 1.1f, 0.75f);
+        TurretModuleLog.info("black-hole triggered turret={} level={} range={} cooldownTicks={}",
+                this.getUUID(), level, range, cooldown);
+    }
     @javax.annotation.Nullable
     public LivingEntity getOwner() {
         if (this.ownerUUID == null) return null;
@@ -2804,30 +2984,30 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // ==========================================
-    // ✅ 新增：倒车雷达 (自动保持距离)
+    // �?新增：倒车雷达 (自动保持距离)
     // ==========================================
     static class MaintainSpaceGoal extends Goal {
         private final SkeletonTurret turret;
         private final double speed;
-        private final float minDistance; // 最小允许距离 (3格)
+        private final float minDistance; // 最小允许距�?(3�?
         private LivingEntity owner;
 
         public MaintainSpaceGoal(SkeletonTurret turret, double speed, float minDistance) {
             this.turret = turret;
             this.speed = speed;
             this.minDistance = minDistance;
-            // 这是一个移动类任务，所以要加 MOVE 标记
+            // 这是一个移动类任务，所以要�?MOVE 标记
             this.setFlags(EnumSet.of(Flag.MOVE));
         }
 
         @Override
         public boolean canUse() {
-            // ✅ 修复 1：如果在水里，禁止触发“后退”逻辑！防止把它推回水里，或者在水里跟逃生逻辑打架。
+            // �?修复 1：如果在水里，禁止触发“后退”逻辑！防止把它推回水里，或者在水里跟逃生逻辑打架�?
             if (turret.isInWaterOrBubble()) return false;
 
-            // 原有的判断
+            // 原有的判�?
             if (!turret.entityData.get(IS_FOLLOWING)) return false;
-            // ✅ 修复：清剿模式下，不需要保持社交距离
+            // �?修复：清剿模式下，不需要保持社交距�?
             if (turret.isPurgeActive()) return false;
             if (turret.ownerUUID == null) return false;
             Player p = turret.level().getPlayerByUUID(turret.ownerUUID);
@@ -2840,7 +3020,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         @Override
         public boolean canContinueToUse() {
             if (turret.isPurgeActive()) return false;
-            // ✅ 修复 2：如果倒车倒着倒着掉水里了，立刻停止！把控制权交给“逃生逻辑”。
+            // �?修复 2：如果倒车倒着倒着掉水里了，立刻停止！把控制权交给“逃生逻辑”�?
             if (turret.isInWaterOrBubble()) return false;
 
             return !turret.getNavigation().isDone() &&
@@ -2851,11 +3031,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         @Override
         public void start() {
             // 寻找一个“远离”主人的位置
-            // 参数解释: turret, 向外找4格, 向上找2格, 远离owner的坐标
+            // 参数解释: turret, 向外�?�? 向上�?�? 远离owner的坐�?
             net.minecraft.world.phys.Vec3 awayPos = net.minecraft.world.entity.ai.util.DefaultRandomPos.getPosAway(turret, 4, 2, owner.position());
 
             if (awayPos != null) {
-                // 开始移动到那个远离点，速度稍微快一点 (1.0)
+                // 开始移动到那个远离点，速度稍微快一�?(1.0)
                 turret.getNavigation().moveTo(awayPos.x, awayPos.y, awayPos.z, speed);
             }
         }
@@ -2867,12 +3047,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
     }
     // ==========================================
-    // ✅ 新增：拾取食物 & 经验转化系统
+    // �?新增：拾取食�?& 经验转化系统
     // ==========================================
     private void handlePickupAndXp() {
-        if (this.level().isClientSide) return; // 只在服务端运行
+        if (this.level().isClientSide) return; // 只在服务端运�?
 
-        // 设定拾取范围：以炮台为中心，向外扩 3.5 格
+        // 设定拾取范围：以炮台为中心，向外�?3.5 �?
         // getBoundingBox() 是炮台的碰撞箱，inflate(1.5) 是把箱子变大
         List<Entity> targets = this.level().getEntities(this, this.getBoundingBox().inflate(3.5));
 
@@ -2885,9 +3065,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 // 1. 必须是没被捡过的
                 if (itemEntity.hasPickUpDelay()) continue;
 
-                // 2. 判定是否拾取：
+                // 2. 判定是否拾取�?
                 // - 如果是食物：总是拾取 (为了回血)
-                // - 如果开启了拾荒模式：拾取所有东西
+                // - 如果开启了拾荒模式：拾取所有东�?
                 boolean shouldPickup = stack.isEdible() || isCommandScavenging();
 
                 if (shouldPickup) {
@@ -2901,25 +3081,25 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                     // 如果只捡了一部分 (背包满了)
                     else {
                         itemEntity.setItem(remainder);
-                        
-                        // 3. 背包满提示 (每3秒一次)
+
+                        // 3. 背包满提�?(�?秒一�?
                         if (this.tickCount % 60 == 0) {
                              if (this.ownerUUID != null) {
                                  Player owner = this.level().getPlayerByUUID(this.ownerUUID);
                                  if (owner != null && this.distanceTo(owner) < 12) {
-                                     owner.displayClientMessage(Component.literal("§c[炮台] 背包已满！"), true);
+                                     owner.displayClientMessage(Component.literal("§c[炮台] 背包已满"), true);
                                  }
                              }
-                             // 同步状态给 HUD (如果有)
+                             // 同步状态给 HUD (如果�?
                              this.entityData.set(DATA_STATUS_OVERLAY, "§c🎒 FULL");
                         }
                     }
                 }
             }
 
-            // --- 逻辑 B: 吸收经验球并转化为瓶子 ---
+            // --- 逻辑 B: 吸收经验球并转化为瓶�?---
             if (target instanceof ExperienceOrb orb) {
-                // 1. 获取经验值
+                // 1. 获取经验�?
                 int amount = orb.getValue();
 
                 // 2. 存入缓存
@@ -2929,18 +3109,18 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 orb.discard();
                 this.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.1F, 1.0F);
 
-                // 4. 尝试转化：每 10 点经验 = 1 个附魔之瓶
+                // 4. 尝试转化：每 10 点经�?= 1 个附魔之�?
                 while (this.xpBuffer >= 10) {
                     ItemStack bottle = new ItemStack(Items.EXPERIENCE_BOTTLE);
                     ItemStack left = addItemToInventory(bottle);
 
                     if (left.isEmpty()) {
-                        // 成功放入背包，扣除缓存
+                        // 成功放入背包，扣除缓�?
                         this.xpBuffer -= 10;
                     } else {
                         // 背包满了！停止转化，剩下的经验留着下次再说
-                        // 或者：把瓶子吐出来掉地上 (防止吞经验)
-                        // 这里我们选择保留在缓存里，等背包有空位再转
+                        // 或者：把瓶子吐出来掉地�?(防止吞经�?
+                        // 这里我们选择保留在缓存里，等背包有空位再�?
                         break;
                     }
                 }
@@ -2954,7 +3134,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         ItemStack toAdd = stack.copy();
 
         // 定义普通背包的范围 (索引 10 ~ 36)
-        // 0-4: 装备栏, 5-9: 升级模块, 10-36: 储物箱
+        // 0-4: 装备�? 5-9: 升级模块, 10-36: 储物�?
         int startSlot = 10;
         int endSlot = 36;
 
@@ -2962,7 +3142,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         for (int i = startSlot; i <= endSlot; i++) {
             ItemStack slotStack = inventory.getItem(i);
 
-            // 如果是同一种物品，且还能堆叠
+            // 如果是同一种物品，且还能堆�?
             if (ItemStack.isSameItemSameTags(slotStack, toAdd) && slotStack.getCount() < slotStack.getMaxStackSize()) {
                 int space = slotStack.getMaxStackSize() - slotStack.getCount();
                 int moveCount = Math.min(space, toAdd.getCount());
@@ -2982,10 +3162,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
         }
 
-        return toAdd; // 返回剩下的 (背包满了)
+        return toAdd; // 返回剩下�?(背包满了)
     }
     // ==========================================
-    // ✅ 新增：护主逻辑 (主人挨打，我帮忙)
+    // �?新增：护主逻辑 (主人挨打，我帮忙)
     // ==========================================
     static class TurretDefendOwnerGoal extends net.minecraft.world.entity.ai.goal.target.TargetGoal {
         private final SkeletonTurret turret;
@@ -3000,12 +3180,12 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public boolean canUse() {
-            // 1. 必须有主人
+            // 1. 必须有主�?
             if (this.turret.ownerUUID == null) return false;
             Player owner = this.turret.level().getPlayerByUUID(this.turret.ownerUUID);
             if (owner == null) return false;
 
-            // 2.以此判定：主人是否刚刚受过伤？
+            // 2.以此判定：主人是否刚刚受过伤�?
             this.attacker = owner.getLastHurtByMob();
             int i = owner.getLastHurtByMobTimestamp();
 
@@ -3026,13 +3206,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             super.start();
         }
 
-        // 排除友军 (非常重要，防止误伤队友)
+        // 排除友军 (非常重要，防止误伤队�?
         @Override
         protected boolean canAttack(@Nullable LivingEntity target, net.minecraft.world.entity.ai.targeting.TargetingConditions targetPredicate) {
             if (target == null) return false;
             if (target instanceof Player && target.getUUID().equals(this.turret.ownerUUID)) return false; // 别打主人
-            if (target instanceof SkeletonTurret) return false; // 别打友军塔
-            if (target instanceof IronGolem) return false;      // 别打铁傀儡
+            if (target instanceof SkeletonTurret) return false; // 别打友军�?
+            if (target instanceof IronGolem) return false;      // 别打铁傀�?
             // 别打我们认证过的友军怪物
             if (target.getPersistentData().getBoolean("IsFriendlyZombie")) return false;
             if (target.getPersistentData().getBoolean("IsFriendlyCreeper")) return false;
@@ -3042,7 +3222,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // ==========================================
-    // ✅ 新增：协作逻辑 (主人打谁，我打谁)
+    // �?新增：协作逻辑 (主人打谁，我打谁)
     // ==========================================
     static class TurretAssistOwnerGoal extends net.minecraft.world.entity.ai.goal.target.TargetGoal {
         private final SkeletonTurret turret;
@@ -3057,21 +3237,21 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public boolean canUse() {
-            // 1. 基础检查
+            // 1. 基础检�?
             if (this.turret.ownerUUID == null) return false;
             Player owner = this.turret.level().getPlayerByUUID(this.turret.ownerUUID);
             if (owner == null) return false;
 
-            // 2. 获取主人攻击的目标
+            // 2. 获取主人攻击的目�?
             this.target = owner.getLastHurtMob();
             int i = owner.getLastHurtMobTimestamp();
             if (i == this.timestamp) return false;
 
-            // 🛑 【核心修复】主人打的怪如果太远，我也不管！
+            // 🛑 【核心修复】主人打的怪如果太远，我也不管�?
             if (this.target != null) {
                 double maxRange = this.turret.getAttackRange();
                 if (this.target.distanceToSqr(this.turret) > maxRange * maxRange) {
-                    return false; // 超出射程，不予协助
+                    return false; // 超出射程，不予协�?
                 }
             }
 
@@ -3103,7 +3283,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
     // ==========================================
 // ==========================================
-    // ✅ 修复：拾荒逻辑 (队长不动 + 无限距离)
+    // �?修复：拾荒逻辑 (队长不动 + 无限距离)
     // ==========================================
     static class TurretScavengeGoal extends Goal {
         private final SkeletonTurret turret;
@@ -3118,22 +3298,22 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public boolean canUse() {
-            // 1. 基础检查
+            // 1. 基础检�?
             if (!turret.isFollowing()) return false;
-            if (turret.getTarget() != null) return false; // 有怪先打怪
+            if (turret.getTarget() != null) return false; // 有怪先打�?
 
             boolean isCaptain = turret.isCaptain();
             boolean isCommandMode = turret.isCommandScavenging();
 
-            // ✅ 关键修改 1：如果是队长，且处于指令模式 -> 队长无视指令，不动！
-            // 这样队长就会被 FollowGoal 接管，乖乖留在主人身边
+            // �?关键修改 1：如果是队长，且处于指令模式 -> 队长无视指令，不动！
+            // 这样队长就会�?FollowGoal 接管，乖乖留在主人身�?
             if (isCaptain && isCommandMode) return false;
 
-            // ✅ 关键修改 2：设定范围
-            double searchRange = 10.0; // 默认普通拾取 (范围小)
+            // �?关键修改 2：设定范�?
+            double searchRange = 10.0; // 默认普通拾�?(范围�?
 
             if (isCommandMode && !isCaptain) {
-                // 如果是队员收到指令 -> 范围极大 (100格)
+                // 如果是队员收到指�?-> 范围极大 (100�?
                 searchRange = 100.0;
             }
 
@@ -3159,22 +3339,22 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public boolean canContinueToUse() {
-            // ✅ 关键修改 3：移除了所有距离检查 (虚拟围栏)
+            // �?关键修改 3：移除了所有距离检�?(虚拟围栏)
             // 只要物品还在，就一直追过去，不论多远！
-            // 安全性由 SkeletonTurret.tick 里的 "hurtTime" 传送负责
+            // 安全性由 SkeletonTurret.tick 里的 "hurtTime" 传送负�?
             return targetItem != null && targetItem.isAlive() && !turret.getNavigation().isDone();
         }
 
         // tick 方法可以删除，因为不再需要计算距离强制停止了
     }    // ==========================================
-    // ✅ 新增：战术同步 (蜂群思维 - 攻击队友的目标)
+    // �?新增：战术同�?(蜂群思维 - 攻击队友的目�?
     // ==========================================
     static class TurretPackAttackGoal extends net.minecraft.world.entity.ai.goal.target.TargetGoal {
         private final SkeletonTurret turret;
         private LivingEntity potentialTarget;
 
         public TurretPackAttackGoal(SkeletonTurret turret) {
-            super(turret, false); // false 表示不需要直接视线也能锁定(先锁了再说)
+            super(turret, false); // false 表示不需要直接视线也能锁�?先锁了再�?
             this.turret = turret;
             this.setFlags(EnumSet.of(Flag.TARGET)); // 这是一个“设定目标”的任务
         }
@@ -3184,14 +3364,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             // 1. 如果我已经有目标了，就专心打，不需要抄作业
             if (this.turret.getTarget() != null) return false;
 
-            // 2. 只有“跟随模式”或“防御模式”都生效，这无所谓，只要是炮台就行
+            // 2. 只有“跟随模式”或“防御模式”都生效，这无所谓，只要是炮台就�?
 
-            // 3. 搜索周围 20 格内的其他炮台
-            // getEntitiesOfClass 用于获取指定类型的实体
+            // 3. 搜索周围 20 格内的其他炮�?
+            // getEntitiesOfClass 用于获取指定类型的实�?
             List<SkeletonTurret> allies = this.turret.level().getEntitiesOfClass(
                     SkeletonTurret.class,
                     this.turret.getBoundingBox().inflate(20.0),
-                    // 筛选条件：必须是活的，必须有目标，必须是同一个主人的(如果有主人)
+                    // 筛选条件：必须是活的，必须有目标，必须是同一个主人的(如果有主�?
                     other -> other != this.turret && other.isAlive() && other.getTarget() != null
             );
 
@@ -3199,7 +3379,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             // 4. 遍历队友，看看它们在打谁
             for (SkeletonTurret ally : allies) {
-                // 确保是自己人 (防止PVP时炮台互殴的逻辑干扰，虽然前面有排除了)
+                // 确保是自己人 (防止PVP时炮台互殴的逻辑干扰，虽然前面有排除�?
                 if (this.turret.ownerUUID != null && ally.ownerUUID != null && !this.turret.ownerUUID.equals(ally.ownerUUID)) {
                     continue; // 不是一家人，不帮忙
                 }
@@ -3209,7 +3389,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 // 5. 再次确认这个目标是不是合法的敌人 (防止队友发疯打自己人)
                 if (this.canAttack(allyTarget, net.minecraft.world.entity.ai.targeting.TargetingConditions.DEFAULT)) {
                     this.potentialTarget = allyTarget;
-                    return true; // 找到了！兄弟在打它，我也要打！
+                    return true; // 找到了！兄弟在打它，我也要打�?
                 }
             }
 
@@ -3218,7 +3398,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public void start() {
-            // 锁定目标！
+            // 锁定目标�?
             this.turret.setTarget(this.potentialTarget);
             super.start();
         }
@@ -3240,62 +3420,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
 
     // ==========================================
-    // ✅ 新增：落水逃生 (遇水先跑，上岸再打)
-    // ==========================================
-    static class EscapeWaterGoal extends Goal {
-        private final SkeletonTurret turret;
-        private final double speed;
-
-        public EscapeWaterGoal(SkeletonTurret turret, double speed) {
-            this.turret = turret;
-            this.speed = speed;
-            // 这个任务需要接管移动和跳跃，优先级很高
-            this.setFlags(EnumSet.of(Flag.MOVE, Flag.JUMP));
-        }
-
-        @Override
-        public boolean canUse() {
-            // 1. 只有在水里才触发 (且水深到足以淹没脚踝)
-            // isInWater() 是原版判断
-            if (!turret.isInWater()) return false;
-
-            // 2. 必须有主人 (往主人那里跑最安全)
-            if (turret.ownerUUID == null) return false;
-            Player owner = turret.level().getPlayerByUUID(turret.ownerUUID);
-
-            // 如果主人就在附近，就启用这个逃生逻辑
-            return owner != null;
-        }
-
-        @Override
-        public void start() {
-            // 告诉炮台：别打架了，先跑路！
-            turret.setTarget(null);
-        }
-
-        @Override
-        public void tick() {
-            Player owner = turret.level().getPlayerByUUID(turret.ownerUUID);
-            if (owner != null) {
-                // 1. 努力往上游 (FloatGoal 会辅助，这里双重保险)
-                if (turret.getRandom().nextFloat() < 0.8f) {
-                    turret.getJumpControl().jump();
-                }
-
-                // 2. 往主人方向游
-                turret.getNavigation().moveTo(owner, speed);
-            }
-        }
-
-        @Override
-        public boolean canContinueToUse() {
-            // 只要还在水里，就一直跑，直到上岸
-            return turret.isInWater();
-        }
-
-    }
-    // ==========================================
-    // ✅ 新增：小队系统支持方法
+    // �?新增：小队系统支持方�?
     // ==========================================
 
     public void setCaptain(boolean isCaptain) {
@@ -3307,39 +3432,39 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return this.entityData.get(IS_CAPTAIN);
     }
 
-    // 计算“战斗力评分”，分数越高越有资格当队长
+    // 计算“战斗力评分”，分数越高越有资格当队�?
     public double getSquadScore() {
-        // 1. 等级权重最大 (每级 10000 分)
+        // 1. 等级权重最�?(每级 10000 �?
         double score = getTier() * 10000.0;
 
-        // 2. 即将升级的权重第二 (杀敌比例 * 5000 分)
-        // 比如杀了 90/100，就是 0.9 * 5000 = 4500 分
+        // 2. 即将升级的权重第�?(杀敌比�?* 5000 �?
+        // 比如杀�?90/100，就�?0.9 * 5000 = 4500 �?
         int kills = getKillCount();
         int target = getKillTarget(getTier());
         if (target > 0) {
             score += ((double)kills / target) * 5000.0;
         }
 
-        // 3. 伤害值 (作为辅助参考，虽然跟等级挂钩，但也加上)
+        // 3. 伤害�?(作为辅助参考，虽然跟等级挂钩，但也加上)
         score += this.getAttributeValue(Attributes.ATTACK_DAMAGE) * 100.0;
 
-        // 4. 当前血量 (同等级下，血多的当队长)
+        // 4. 当前血�?(同等级下，血多的当队�?
         score += this.getHealth();
 
         return score;
     }
-    // ✅ 新增：允许外部查询跟随状态
+    // �?新增：允许外部查询跟随状�?
     public boolean isFollowing() {
         return this.entityData.get(IS_FOLLOWING);
     }
-    // ✅ 新增：允许外部修改跟随状态 (解决报错的核心)
+    // �?新增：允许外部修改跟随状�?(解决报错的核�?
     public void setFollowing(boolean isFollowing) {
         this.entityData.set(IS_FOLLOWING, isFollowing);
 
-        // ✅ 新增：如果是切换到 [坚守模式] (false)，立刻强制刹车！
+        // �?新增：如果是切换�?[坚守模式] (false)，立刻强制刹车！
         if (!isFollowing) {
             this.getNavigation().stop(); // 停下脚步
-            this.setTarget(null);        // (可选) 停止当前攻击目标，重新索敌
+            this.setTarget(null);        // (可�? 停止当前攻击目标，重新索�?
         }
     }
 
@@ -3427,7 +3552,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     public void setSquadMember(boolean isMember) {
-        // ✅ [Fix] 记录卡召唤的实体禁止加入小队
+        // �?[Fix] 记录卡召唤的实体禁止加入小队
         if (isMember && this.getPersistentData().getBoolean("RecordSummoned")) {
             return;
         }
@@ -3439,7 +3564,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return this.entityData.get(IS_SQUAD_MEMBER);
     }
     // ==========================================
-    // ✅ 新增：坚守模式下的原地巡逻 AI
+    // �?新增：坚守模式下的原地巡�?AI
     // ==========================================
     static class StationaryWanderGoal extends net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal {
         private final SkeletonTurret turret;
@@ -3449,33 +3574,33 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             this.turret = turret;
         }
 
-        // 1. 只有在 [坚守模式] 且 [没有目标] 时才溜达
+        // 1. 只有�?[坚守模式] �?[没有目标] 时才溜达
         @Override
         public boolean canUse() {
-            if (this.turret.isFollowing()) return false; // 跟随模式下禁止乱跑
-            if (this.turret.getTarget() != null) return false; // 有敌人先打敌人
-            if (this.turret.isCommandScavenging()) return false; // 捡垃圾时别乱跑
+            if (this.turret.isFollowing()) return false; // 跟随模式下禁止乱�?
+            if (this.turret.getTarget() != null) return false; // 有敌人先打敌�?
+            if (this.turret.isCommandScavenging()) return false; // 捡垃圾时别乱�?
 
             return super.canUse();
         }
 
-        // 2. 限制移动范围 (3格)
+        // 2. 限制移动范围 (3�?
         @Override
         @Nullable
         protected net.minecraft.world.phys.Vec3 getPosition() {
-            // 在当前位置 (this.mob) 周围找一个点
-            // 参数：水平范围 3，垂直范围 2
+            // 在当前位�?(this.mob) 周围找一个点
+            // 参数：水平范�?3，垂直范�?2
             return net.minecraft.world.entity.ai.util.DefaultRandomPos.getPos(this.mob, 3, 2);
         }
     }
     // ==========================================
-    // ✅ 新增：清剿模式移动 AI (已优化：150格 + 屏蔽干扰)
+    // �?新增：清剿模式移�?AI (已优化：150�?+ 屏蔽干扰)
     // ==========================================
     // ==========================================
-    // ✅ 新增：清剿模式移动 AI (已修复：分段导航 + 150格)
+    // �?新增：清剿模式移�?AI (已修复：分段导航 + 150�?
     // ==========================================
 // ==========================================
-    // ✅ 新增：清剿模式 AI (猎杀版：主动索敌 + 150格边界)
+    // �?新增：清剿模�?AI (猎杀版：主动索敌 + 150格边�?
     // ==========================================
     static class PurgeMoveGoal extends Goal {
         private final SkeletonTurret turret;
@@ -3487,7 +3612,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         @Override
         public boolean canUse() {
-            // 只要开了模式，就必须干活
+            // 只要开了模式，就必须干�?
             return turret.isPurgeActive();
         }
 
@@ -3504,37 +3629,37 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 return;
             }
 
-            // 1. 检查最大活动范围 (150格 = 22500)
-            // 如果离主人太远了，哪怕前面有怪也不能追了，必须回来
+            // 1. 检查最大活动范�?(150�?= 22500)
+            // 如果离主人太远了，哪怕前面有怪也不能追了，必须回�?
             if (turret.distanceToSqr(owner) > 22500.0) {
                 turret.teleportToSafeSpot(owner);
                 turret.stopPurgeMode();
                 return;
             }
 
-            // 2. 如果已经锁定了攻击目标，就交给战斗 AI 处理
+            // 2. 如果已经锁定了攻击目标，就交给战�?AI 处理
             if (turret.getTarget() != null && turret.getTarget().isAlive()) {
                 return;
             }
 
-// ==================== ⚔ 猎杀雷达 (已修复) ====================
+// ==================== �?猎杀雷达 (已修�? ====================
 
-            // ✅ 第一步：先算出我要扫描多远 (提出来写)
+            // �?第一步：先算出我要扫描多�?(提出来写)
             double scanRange = Math.max(32.0, turret.getAttackRange());
 
-            // ✅ 第二步：再把算出来的距离放进去用
+            // �?第二步：再把算出来的距离放进去用
             List<LivingEntity> enemies = turret.level().getEntitiesOfClass(LivingEntity.class,
                     turret.getBoundingBox().inflate(scanRange),
                     e -> isValidTarget(e)
             );
 
-            // 如果发现了敌人
+            // 如果发现了敌�?
             if (!enemies.isEmpty()) {
-                // 找最近的一个
+                // 找最近的一�?
                 enemies.sort(Comparator.comparingDouble(turret::distanceToSqr));
                 LivingEntity prey = enemies.get(0);
 
-                // 冲过去！(速度 1.4，比平时快)
+                // 冲过去！(速度 1.4，比平时�?
                 turret.getNavigation().moveTo(prey, 1.4);
                 return;
             }
@@ -3542,7 +3667,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             // 3. 附近没怪了？继续执行地毯式搜索 (往 150 格边界走)
             if (turret.getNavigation().isDone()) {
-                double rad = Math.toRadians(turret.purgeSearchAngle); // 之前分配的角度
+                double rad = Math.toRadians(turret.purgeSearchAngle); // 之前分配的角�?
 
                 // 计算 150 格远处的终点
                 double finalX = owner.getX() + Math.cos(rad) * 150.0;
@@ -3553,7 +3678,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 double dz = finalZ - turret.getZ();
                 double distToFinal = Math.sqrt(dx * dx + dz * dz);
 
-                // 每次只往前推进 16 格 (分段导航，防止寻路失败)
+                // 每次只往前推�?16 �?(分段导航，防止寻路失�?
                 double step = Math.min(distToFinal, 16.0);
                 double nextX = turret.getX() + (dx / distToFinal) * step;
                 double nextZ = turret.getZ() + (dz / distToFinal) * step;
@@ -3562,26 +3687,26 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
         }
 
-        // 🛡️ 敌我识别过滤器 (把朋友排除掉)
+        // 🛡�?敌我识别过滤�?(把朋友排除掉)
         private boolean isValidTarget(LivingEntity e) {
             if (e == turret) return false; // 别打自己
-            if (!e.isAlive()) return false; // 别鞭尸
-            if (e instanceof Player) return false; // 别打人
+            if (!e.isAlive()) return false; // 别鞭�?
+            if (e instanceof Player) return false; // 别打�?
             if (e instanceof SkeletonTurret) return false; // 别打队友
             if (e instanceof net.minecraft.world.entity.decoration.ArmorStand) return false; // 别打架子
 
-            // 别打我们认证过的友军僵尸/苦力怕
+            // 别打我们认证过的友军僵尸/苦力�?
             if (e.getPersistentData().getBoolean("IsFriendlyZombie")) return false;
             if (e.getPersistentData().getBoolean("IsFriendlyCreeper")) return false;
 
-            // 其他所有能动的东西 (僵尸、骷髅、猪、羊、村民...)，全部视为猎物！
+            // 其他所有能动的东西 (僵尸、骷髅、猪、羊、村�?..)，全部视为猎物！
             return true;
         }
 
     }
 
     // ==========================================
-    // ✅ 新增：战术拉扯 AI (拒绝贴脸，保持 3.5 格距离)
+    // �?新增：战术拉�?AI (拒绝贴脸，保�?3.5 格距�?
     // ==========================================
     static class KeepDistanceGoal extends Goal {
         private final SkeletonTurret turret;
@@ -3593,16 +3718,16 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             this.turret = turret;
             this.speed = speed;
             this.range = range;
-            this.setFlags(EnumSet.of(Flag.MOVE)); // 接管移动控制权
+            this.setFlags(EnumSet.of(Flag.MOVE)); // 接管移动控制�?
         }
 
         @Override
         public boolean canUse() {
-            // 🛑 1. 坚守模式 (Guard Mode) 检查
-            // 如果不是跟随状态 (即坚守)，绝对不动！死守原地！
+            // 🛑 1. 坚守模式 (Guard Mode) 检�?
+            // 如果不是跟随状�?(即坚�?，绝对不动！死守原地�?
             if (!turret.isFollowing()) return false;
 
-            // 🛑 2. 如果正在被玩家强制救援，也不要乱跑
+            // 🛑 2. 如果正在被玩家强制救援，也不要乱�?
             if (turret.isCommandRescue()) return false;
 
             // 3. 扫描周围 (range) 范围内的怪物
@@ -3613,7 +3738,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
             if (enemies.isEmpty()) return false;
 
-            // 4. 找到最近的一个，确立为躲避目标
+            // 4. 找到最近的一个，确立为躲避目�?
             // (简单的排序，找最近的)
             enemies.sort(Comparator.comparingDouble(turret::distanceToSqr));
             this.toAvoid = enemies.get(0);
@@ -3625,7 +3750,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         public void start() {
             if (this.toAvoid == null) return;
 
-            // 5. 计算撤退路径 (向反方向跑 6 格)
+            // 5. 计算撤退路径 (向反方向�?6 �?
             net.minecraft.world.phys.Vec3 awayPos = net.minecraft.world.entity.ai.util.DefaultRandomPos.getPosAway(turret, 6, 4, this.toAvoid.position());
 
             if (awayPos != null) {
@@ -3651,21 +3776,21 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     }
     // ==========================================
-    // 🛡️ 冗余设计：排斥力场白名单
+    // 🛡�?冗余设计：排斥力场白名单
     // ==========================================
     private boolean isImmuneToPush(LivingEntity e) {
         // 1. 绝对排除：我自己
         if (e == this) return true;
 
-        // 2. 绝对排除：玩家 (哪怕是敌人也不要乱推，体验不好，除非你想做PVP)
+        // 2. 绝对排除：玩�?(哪怕是敌人也不要乱推，体验不好，除非你想做PVP)
         if (e instanceof Player) return true;
 
-        // 3. 绝对排除：同类 (所有炮台)
+        // 3. 绝对排除：同�?(所有炮�?
         if (e instanceof SkeletonTurret) return true;
 
-        // 4. 【针对你的需求】：排除所有骷髅家族成员
-        // AbstractSkeleton 包含了：普通骷髅、流浪者、凋灵骷髅
-        // ✅ 只要你未来的“近战骷髅”继承自 Skeleton 或 AbstractSkeleton，这里自动生效！
+        // 4. 【针对你的需求】：排除所有骷髅家族成�?
+        // AbstractSkeleton 包含了：普通骷髅、流浪者、凋灵骷�?
+        // �?只要你未来的“近战骷髅”继承自 Skeleton �?AbstractSkeleton，这里自动生效！
         if (e instanceof net.minecraft.world.entity.monster.AbstractSkeleton) return true;
 
         // 5. 排除铁傀儡和其他已知友军 (之前逻辑里的)
@@ -3673,16 +3798,16 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (e.getPersistentData().getBoolean("IsFriendlyZombie")) return true;
         if (e.getPersistentData().getBoolean("IsFriendlyCreeper")) return true;
 
-        // 6. 【冗余接口 - NBT标签】：终极扩展方案
+        // 6. 【冗余接�?- NBT标签】：终极扩展方案
         // 如果你以后做了一个“地狱火恶魔”，它不是骷髅类，但你也不想推它
         // 只需要在那只怪生成时写一句：entity.getPersistentData().putBoolean("TurretAlly", true);
         if (e.getPersistentData().getBoolean("TurretAlly")) return true;
 
-        // 7. 【冗余接口 - 骑乘判断】
+        // 7. 【冗余接�?- 骑乘判断�?
         // 如果这个怪骑着我，或者我骑着它，别推
         if (this.hasPassenger(e) || e.hasPassenger(this)) return true;
 
-        // 如果以上都不是，那就是可以推开的杂鱼
+        // 如果以上都不是，那就是可以推开的杂�?
         return false;
     }
     // (registerControllers removed)
@@ -3699,7 +3824,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return this.entityData.get(DATA_XP);
     }
 
-    // 如果你需要设置 XP 的方法：
+    // 如果你需要设�?XP 的方法：
     public void setXp(int amount) {
         this.entityData.set(DATA_XP, amount);
     }
@@ -3709,23 +3834,23 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     // 3. 获取射击延迟 (Tick) - 核心算法
     public float getFireDelay() {
         int tier = getTier();
-        
-        // 基础冷却: 随着等级提升而降低 (20 -> 17 -> 14 -> 11 -> 8 -> 5)
+
+        // 基础冷却: 随着等级提升而降�?(20 -> 17 -> 14 -> 11 -> 8 -> 5)
         double cooldown = Math.max(5.0, 20.0 - (tier * 3.0));
 
-        // 攻速叠加层数 (0.075 -> 7.5% per stack)
-        // 满级 120层 -> +900% (10倍速)
+        // 攻速叠加层�?(0.075 -> 7.5% per stack)
+        // 满级 120�?-> +900% (10倍�?
         double stackMultiplier = 1.0 + (this.entityData.get(DATA_HEAT) * 0.075);
         cooldown /= stackMultiplier;
 
-        // 狂暴模式 4倍速
+        // 狂暴模式 4倍�?
         if (this.entityData.get(IS_BRUTAL)) {
             cooldown /= 4.0;
         }
 
-        // ✅ 应用攻速属性加成 (Attribute Modifier)
+        // �?应用攻速属性加�?(Attribute Modifier)
         double attrSpeed = this.getAttributeValue(Attributes.ATTACK_SPEED);
-        // 如果攻速属性 > 1.0 (比如有加速buff)，则冷却时间缩短
+        // 如果攻速属�?> 1.0 (比如有加速buff)，则冷却时间缩短
         if (attrSpeed > 0) {
             cooldown /= attrSpeed;
         }
@@ -3734,9 +3859,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     // ==========================================
-    // 🧠 自定义跟随 AI (适配 Skeleton)
+    // 🧠 自定义跟�?AI (适配 Skeleton)
     // ==========================================
-    // (已移除重复且错误的 Goal 代码块)
+    // (已移除重复且错误�?Goal 代码�?
 
 
 
