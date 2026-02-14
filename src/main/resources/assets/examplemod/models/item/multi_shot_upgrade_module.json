@@ -1,0 +1,7 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "minecraft:item/amethyst_shard",
+    "layer1": "minecraft:item/firework_star"
+  }
+}
