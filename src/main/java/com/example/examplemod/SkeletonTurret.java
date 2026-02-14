@@ -85,7 +85,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private static final EntityDataAccessor<Boolean> IS_SCAVENGING = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.BOOLEAN);
     // ✅ 新增：身份编号 (001-999)
     public static final EntityDataAccessor<Integer> UNIT_ID = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
-    public static final EntityDataAccessor<Integer> DEATH_PLAQUE_FATAL_HIT_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> DROP_COUNT = SynchedEntityData.defineId(SkeletonTurret.class, EntityDataSerializers.INT);
     // RANGE_LEVEL removed - derived from TIER
 
     // ==================== 🗣️ 头顶显示系统数据 ====================
@@ -187,6 +187,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private int teleportCooldown = 0;
     public int getTeleportCooldown() { return this.teleportCooldown; } // Added getter
 
+    // ✅ 新增：死亡记录卡掉落标志 (幂等性校验)
+    private boolean deathRecordDropped = false;
+    public boolean hasDroppedRecord() { return this.deathRecordDropped; }
+    public void setDroppedRecord(boolean dropped) { this.deathRecordDropped = dropped; }
+
     public final SimpleContainer inventory = new SimpleContainer(45);
 
     public SkeletonTurret(EntityType<? extends Skeleton> type, Level level) {
@@ -251,7 +256,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.entityData.define(IS_PURGE_ACTIVE, false);
         this.entityData.define(IS_SCAVENGING, false);
         this.entityData.define(UNIT_ID, 0);
-        this.entityData.define(DEATH_PLAQUE_FATAL_HIT_COUNT, 0);
+        this.entityData.define(DROP_COUNT, 0);
         this.entityData.define(SYNC_BASE_NAME, "先锋队员");
         this.entityData.define(PRINT_PROGRESS, 0.0f);
         this.entityData.define(PRINT_STATE, 0);
@@ -566,8 +571,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public void tick() {
         super.tick();
         
+        // ✅ [Fix] 死亡时立即停止所有自定义逻辑，防止“诈尸”或动画抽搐
         if (this.isDeadOrDying()) {
-            return;
+            this.setDeltaMovement(0, -0.2, 0); // 确保尸体倒地
+            return; 
         }
 
         tickTeleportCooldown();
@@ -761,7 +768,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 float hp = this.getHealth();
                 float max = this.getMaxHealth();
                 if (hp < max * 0.2f) {
-                    TurretDialogue.trySpeak(this, TurretDialogue.Type.LOW_HP);
+                    TurretDialogue.trySpeak(this, TurretDialogue.Type.DYING);
                 } else if (hp < max * 0.5f) {
                     TurretDialogue.trySpeak(this, TurretDialogue.Type.LOW_HP);
                 }
@@ -1019,6 +1026,11 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 this.hurt(this.level().damageSources().generic(), 2.0f); // 自己扣血直到炸掉
 
             }
+            // 逻辑已移动到 die() 方法，防止 tick 重复掉落
+
+
+
+            // 声音逻辑已移动到 die()
 
         }
 
@@ -1242,7 +1254,137 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     @Override
     public void die(DamageSource source) {
+        if (!this.level().isClientSide) {
+            System.out.println("[Turret] ☠️ SkeletonTurret #" + this.entityData.get(UNIT_ID) + " died. Source: " + source.getMsgId());
+
+            if (TurretConfig.COMMON.enableDeathRecordDrop.get() && !this.deathRecordDropped) {
+                int usedDrops = this.entityData.get(DROP_COUNT);
+                if (usedDrops < 2) {
+                    ItemStack record = this.createDeathRecordCard(usedDrops + 1);
+                    ItemEntity drop = new ItemEntity(this.level(), this.getX(), this.getY() + 0.5D, this.getZ(), record);
+                    drop.setDeltaMovement(0.0D, 0.2D, 0.0D);
+                    this.level().addFreshEntity(drop);
+                    this.deathRecordDropped = true;
+                }
+            }
+        }
         super.die(source);
+        
+        // ✅ [Fix] 立即停止所有 AI 和物理运动，防止尸体抽搐或滑行
+        this.setNoAi(true);
+        this.getNavigation().stop();
+        this.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        
+        if (!this.level().isClientSide) {
+            // ✅ 新增：炸机芯片掉落 (仅在蓝屏状态下掉落，且只掉一次)
+            if (this.getPrintState() == 2) {
+                this.spawnAtLocation(ExampleMod.GLITCH_CHIP.get());
+                this.playSound(ModSounds.PRINT_EXPLODE.get(), 1.0f, 1.0f);
+            }
+
+            // 1. 爆炸效果 (无方块破坏)
+            this.level().explode(this, this.getX(), this.getY(), this.getZ(), 5.0F, Level.ExplosionInteraction.NONE);
+            
+            // 2. 对敌对生物造成真实伤害和击退
+            List<LivingEntity> enemies = this.level().getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(5.0), 
+                e -> (e instanceof Monster || e instanceof Enemy) && e != this);
+            
+            for (LivingEntity enemy : enemies) {
+                enemy.hurt(this.damageSources().magic(), 25.0F); 
+                double d0 = enemy.getX() - this.getX();
+                double d1 = enemy.getZ() - this.getZ();
+                enemy.knockback(1.0F, -d0, -d1);
+            }
+
+            // ✅ 新增：末影珍珠独立掉落 (3% - 6% 随机)
+            float pearlChance = 0.03f + this.random.nextFloat() * 0.03f;
+            if (this.random.nextFloat() < pearlChance) {
+                this.spawnAtLocation(Items.ENDER_PEARL);
+            }
+
+        // Death Record logic moved to ExampleMod.onLivingDrops for better compatibility and 100% chance configuration
+        }
+    }
+
+    // ==========================================
+    // ✅ 死亡记录卡数据生成器
+    // ==========================================
+    public CompoundTag createRecordTag(int nextDropCount) {
+        CompoundTag dataTag = new CompoundTag();
+        dataTag.putInt("UnitID", this.entityData.get(UNIT_ID));
+        dataTag.putInt("RangeLevel", this.getRangeLevel()); 
+        dataTag.putInt("Tier", getTier());
+        dataTag.putInt("Level", getTier()); // Legacy support
+        dataTag.putInt("XP", this.entityData.get(DATA_XP));
+        dataTag.putInt("KillCount", this.entityData.get(KILL_COUNT));
+        dataTag.putInt("UpgradeProgress", this.entityData.get(UPGRADE_PROGRESS));
+        dataTag.putBoolean("IsBrutal", this.entityData.get(IS_BRUTAL));
+        dataTag.putInt("Heat", this.getHeat());
+        dataTag.putInt("DropCount", Math.max(0, nextDropCount));
+        dataTag.putDouble("DeathX", this.getX());
+        dataTag.putDouble("DeathY", this.getY());
+        dataTag.putDouble("DeathZ", this.getZ());
+
+        if (this.ownerUUID != null) {
+            dataTag.putUUID("OwnerUUID", this.ownerUUID);
+        }
+        dataTag.putString("BaseName", this.entityData.get(SYNC_BASE_NAME));
+
+        // Save Inventory
+        ListTag invList = new ListTag();
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (!stack.isEmpty()) {
+                CompoundTag itemTag = new CompoundTag();
+                itemTag.putByte("Slot", (byte)i);
+                stack.save(itemTag);
+                invList.add(itemTag);
+            }
+        }
+        dataTag.put("Inventory", invList);
+
+        // Save equipment
+        ListTag equipmentList = new ListTag();
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            ItemStack stack = this.getItemBySlot(slot);
+            if (!stack.isEmpty()) {
+                CompoundTag itemTag = new CompoundTag();
+                itemTag.putString("SlotName", slot.getName());
+                stack.save(itemTag);
+                equipmentList.add(itemTag);
+            }
+        }
+        dataTag.put("Equipment", equipmentList);
+        
+        return dataTag;
+    }
+
+    public CompoundTag createRecordTag() {
+        return createRecordTag(this.entityData.get(DROP_COUNT));
+    }
+
+    public ItemStack createDeathRecordCard(int nextDropCount) {
+        ItemStack record = new ItemStack(ExampleMod.DEATH_RECORD_ITEM.get());
+        CompoundTag masterTag = new CompoundTag();
+        masterTag.putString("Version", "2.0");
+
+        CompoundTag dataTag = this.createRecordTag(nextDropCount);
+        masterTag.put("Data", dataTag);
+        masterTag.putString("Checksum", Integer.toHexString(dataTag.toString().hashCode()));
+        masterTag.put("Backup", dataTag.copy());
+        record.setTag(masterTag);
+        return record;
+    }
+
+    @Override
+    protected void tickDeath() {
+        ++this.deathTime;
+        // ✅ [Fix] 立即移除实体 (Immediate Removal)
+        // 不再等待死亡动画，确保死亡后立刻消失
+        if (this.deathTime >= 1 && !this.level().isClientSide() && !this.isRemoved()) {
+            this.level().broadcastEntityEvent(this, (byte)60);
+            this.remove(Entity.RemovalReason.KILLED);
+        }
     }
 
     @Override
@@ -1360,7 +1502,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         float maxHp = this.getMaxHealth();
 
         if (hp < maxHp * 0.2f) {
-            TurretDialogue.trySpeak(this, TurretDialogue.Type.LOW_HP);
+            TurretDialogue.trySpeak(this, TurretDialogue.Type.DYING);
         } else if (hp < maxHp * 0.5f) {
             TurretDialogue.trySpeak(this, TurretDialogue.Type.LOW_HP);
         }
@@ -2134,10 +2276,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         // ✅ 【第五步A】 保存新变量
         tag.putInt("UnitID", this.entityData.get(UNIT_ID));
         // RangeLevel not saved (derived)
+        tag.putInt("DropCount", this.entityData.get(DROP_COUNT));
         tag.putString("CustomBaseName", this.entityData.get(SYNC_BASE_NAME));
         tag.putInt("XpBuffer", this.xpBuffer);
         tag.putInt("UpgradeProgress", this.entityData.get(UPGRADE_PROGRESS));
-        tag.putInt("DeathPlaqueFatalHitCount", this.entityData.get(DEATH_PLAQUE_FATAL_HIT_COUNT));
         tag.putBoolean("IsSquadMember", this.entityData.get(IS_SQUAD_MEMBER));
         // Save Teleport Module Data
         tag.putBoolean("HasTeleportModule", this.hasTeleportModule());
@@ -2204,10 +2346,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (tag.contains("UnitID")) {
             this.entityData.set(UNIT_ID, tag.getInt("UnitID"));
         }
-        if (tag.contains("DeathPlaqueFatalHitCount")) {
-            this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, tag.getInt("DeathPlaqueFatalHitCount"));
-        } else if (tag.contains("DropCount")) {
-            this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, tag.getInt("DropCount"));
+        if (tag.contains("DropCount")) {
+            this.entityData.set(DROP_COUNT, tag.getInt("DropCount"));
         }
         if (tag.contains("CustomBaseName")) {
             this.entityData.set(SYNC_BASE_NAME, tag.getString("CustomBaseName"));
@@ -2265,6 +2405,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (dataTag.contains("IsBrutal")) this.entityData.set(IS_BRUTAL, dataTag.getBoolean("IsBrutal"));
         if (dataTag.contains("UpgradeProgress")) this.entityData.set(UPGRADE_PROGRESS, dataTag.getInt("UpgradeProgress"));
         if (dataTag.contains("KillCount")) this.entityData.set(KILL_COUNT, dataTag.getInt("KillCount"));
+        if (dataTag.contains("DropCount")) this.entityData.set(DROP_COUNT, dataTag.getInt("DropCount"));
 
         // 1.1 恢复主人和名字
         if (dataTag.hasUUID("OwnerUUID")) {
@@ -2775,27 +2916,6 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     // ✅ 补充这个方法，允许外部读取主人UUID
     public UUID getOwnerUUID() {
         return this.ownerUUID;
-    }
-
-    public void setOwner(Player player) {
-        this.ownerUUID = player.getUUID();
-        this.entityData.set(OWNER_UUID_SYNC, Optional.of(this.ownerUUID));
-    }
-
-    public boolean isBrutal() {
-        return this.entityData.get(IS_BRUTAL);
-    }
-
-    public EntityDataAccessor<Integer> getDataXpAccessor() {
-        return DATA_XP;
-    }
-
-    public int getFatalHitCount() {
-        return this.entityData.get(DEATH_PLAQUE_FATAL_HIT_COUNT);
-    }
-
-    public void setFatalHitCount(int count) {
-        this.entityData.set(DEATH_PLAQUE_FATAL_HIT_COUNT, Math.max(0, count));
     }
     @javax.annotation.Nullable
     public LivingEntity getOwner() {
