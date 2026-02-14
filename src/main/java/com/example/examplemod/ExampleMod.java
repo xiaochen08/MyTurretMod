@@ -60,6 +60,8 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -73,6 +75,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.world.BossEvent;
+
 
 import net.minecraftforge.fml.config.ModConfig;
 
@@ -90,6 +98,7 @@ public class ExampleMod {
     public static final RegistryObject<Item> TURRET_WAND = ITEMS.register("turret_wand", () -> new TurretItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GLITCH_CHIP = ITEMS.register("glitch_chip", () -> new GlitchChipItem(new Item.Properties().stacksTo(64)));
     public static final RegistryObject<Item> TELEPORT_UPGRADE_MODULE = ITEMS.register("teleport_upgrade_module", () -> new TeleportUpgradeItem(new Item.Properties().stacksTo(64)));
+    public static final RegistryObject<Item> MULTI_SHOT_UPGRADE_MODULE = ITEMS.register("multi_shot_upgrade_module", () -> new MultiShotUpgradeModuleItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
     
     public static final RegistryObject<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> ADD_ENDER_PEARL = LOOT_MODIFIERS.register("add_ender_pearl", EnderPearlLootModifier.CODEC);
@@ -124,13 +133,72 @@ public class ExampleMod {
         LOOT_MODIFIERS.register(modEventBus);
         modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::addEntityAttributes);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            modEventBus.addListener(ClientModEvents::registerRenderers);
+            modEventBus.addListener(ClientModEvents::registerLayerDefinitions);
+            modEventBus.addListener(ClientModEvents::clientSetup);
+            modEventBus.addListener(ClientModEvents::registerItemColors);
+        }
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(BossBarManager.class); // Register BossBarManager
         LOGGER.info("✅ 炮台模组已加载 - 监控系统启动"); // 启动日志
         PacketHandler.register();
         ModSounds.register(modEventBus);
         // GeckoLib removed
 
 
+    }
+
+    // 修复后的BossBarManager类
+    public static class BossBarManager {
+        private static final Map<UUID, BossBarInfo> activeBars = new ConcurrentHashMap<>();
+
+        private static class BossBarInfo {
+            final ServerBossEvent bar;
+            int remainingTicks;
+            final int initialDuration;
+
+            BossBarInfo(ServerBossEvent bar, int durationTicks) {
+                this.bar = bar;
+                this.remainingTicks = durationTicks;
+                this.initialDuration = durationTicks;
+            }
+        }
+
+        public static void showTemporaryBossBar(ServerPlayer player, Component message, BossEvent.BossBarColor color, BossEvent.BossBarOverlay style, int durationTicks) {
+            if (activeBars.containsKey(player.getUUID())) {
+                BossBarInfo oldInfo = activeBars.remove(player.getUUID());
+                oldInfo.bar.removePlayer(player);
+            }
+
+            ServerBossEvent bossBar = new ServerBossEvent(message, color, style);
+            bossBar.setProgress(1.0f);
+            bossBar.addPlayer(player);
+            activeBars.put(player.getUUID(), new BossBarInfo(bossBar, durationTicks));
+        }
+
+        @SubscribeEvent
+        public static void onServerTick(TickEvent.ServerTickEvent event) {
+            if (event.phase != TickEvent.Phase.END) return;
+
+            Iterator<Map.Entry<UUID, BossBarInfo>> iterator = activeBars.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<UUID, BossBarInfo> entry = iterator.next();
+                BossBarInfo info = entry.getValue();
+                info.remainingTicks--;
+
+                float progress = (float) info.remainingTicks / info.initialDuration;
+                info.bar.setProgress(Math.max(0, progress));
+
+                if (info.remainingTicks <= 0) {
+                    ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
+                    if (player != null) {
+                        info.bar.removePlayer(player);
+                    }
+                    iterator.remove();
+                }
+            }
+        }
     }
 
 
@@ -146,7 +214,18 @@ public class ExampleMod {
             event.accept(TURRET_WAND);
             event.accept(GLITCH_CHIP);
             event.accept(TELEPORT_UPGRADE_MODULE);
+            event.accept(MULTI_SHOT_UPGRADE_MODULE);
             event.accept(DEATH_RECORD_ITEM);
+
+            for (int level = 1; level <= TurretUpgradeTierPlan.maxLevel(); level++) {
+                ItemStack teleportStack = new ItemStack(TELEPORT_UPGRADE_MODULE.get());
+                TeleportUpgradeItem.setLevel(teleportStack, level);
+                event.accept(teleportStack);
+
+                ItemStack multiShotStack = new ItemStack(MULTI_SHOT_UPGRADE_MODULE.get());
+                MultiShotUpgradeModuleItem.setLevel(multiShotStack, level);
+                event.accept(multiShotStack);
+            }
         }
     }
 
@@ -158,7 +237,7 @@ public class ExampleMod {
     public void onLivingDrops(LivingDropsEvent event) {
         if (event.getEntity().level().isClientSide) return;
         
-        // 1. SkeletonTurret Death Record Drop (100% chance, Configurable)
+        // 1. SkeletonTurret Death Record Drop (100%, deterministic, exactly one)
         if (event.getEntity() instanceof SkeletonTurret turret) {
             DamageSource source = event.getSource();
             LOGGER.info("[DropSystem] Processing drops for SkeletonTurret #{}. Source: {}, Y-Pos: {}", 
@@ -171,44 +250,23 @@ public class ExampleMod {
                 LOGGER.info("[DropSystem] ⚠ Death Record already dropped for Turret #{}, skipping.", turret.getEntityData().get(SkeletonTurret.UNIT_ID));
                 return;
             }
-            
-            // Fall Death Capture Check
-            if (TurretConfig.COMMON.enableFallDeathCapture.get()) {
-                boolean isFall = source.is(net.minecraft.world.damagesource.DamageTypes.FALL) || 
-                                 source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD);
-                
-                if (isFall) {
-                    double fallDistance = turret.fallDistance;
-                    double threshold = TurretConfig.COMMON.fallDeathHeightThreshold.get();
-                    LOGGER.info("[DropSystem] Fall Death Detected. Distance: {}, Threshold: {}", fallDistance, threshold);
-                }
-            }
 
-            if (TurretConfig.COMMON.enableDeathRecordDrop.get()) {
-                int usedDrops = turret.getEntityData().get(SkeletonTurret.DROP_COUNT);
-                if (usedDrops >= 2) {
-                    LOGGER.info("[DropSystem] Drop limit reached for Turret #{} (count={}), skipping record drop.",
-                        turret.getEntityData().get(SkeletonTurret.UNIT_ID), usedDrops);
-                    return;
-                }
-
-                LOGGER.info("[DropSystem] Death Record Drop ENABLED. Generating...");
-                ItemStack record = turret.createDeathRecordCard(usedDrops + 1);
-                if (!record.isEmpty()) {
-                    // Add to drops
-                    event.getDrops().add(new ItemEntity(
-                        turret.level(), 
-                        turret.getX(), turret.getY() + 0.5, turret.getZ(), 
-                        record
-                    ));
-                    turret.setDroppedRecord(true); // Mark as dropped
-                    LOGGER.info("[DropSystem] ✅ Death Record dropped successfully at ({}, {}, {})", turret.getX(), turret.getY(), turret.getZ());
-                } else {
-                    LOGGER.error("[DropSystem] ❌ Failed to create record card.");
-                }
-            } else {
-                LOGGER.info("[DropSystem] Death Record Drop DISABLED by config.");
+            // Force exactly one plaque drop at the death position.
+            event.getDrops().clear();
+            ItemStack record = turret.createDeathRecordCard(1);
+            if (record.isEmpty()) {
+                LOGGER.error("[DropSystem] ❌ Failed to create record card.");
+                return;
             }
+            record.setCount(1);
+            event.getDrops().add(new ItemEntity(
+                    turret.level(),
+                    turret.getX(), turret.getY(), turret.getZ(),
+                    record
+            ));
+            turret.setDroppedRecord(true);
+            LOGGER.info("[DropSystem] ✅ Forced Death Record drop at ({}, {}, {}), source={}",
+                    turret.getX(), turret.getY(), turret.getZ(), source.getMsgId());
             // Turrets don't drop pearls
             return; 
         }

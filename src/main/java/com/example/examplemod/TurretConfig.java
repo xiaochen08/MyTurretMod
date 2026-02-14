@@ -3,8 +3,6 @@ package com.example.examplemod;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.List;
-
 public class TurretConfig {
     public static final Common COMMON;
     public static final ForgeConfigSpec COMMON_SPEC;
@@ -38,7 +36,8 @@ public class TurretConfig {
     }
 
     public static DisplayMode getDisplayMode() {
-        return DisplayMode.fromConfigValue(COMMON.hudPromptDisplayMode.get());
+        String value = COMMON.hudPromptDisplayMode.get();
+        return DisplayMode.fromConfigValue(value == null ? DisplayMode.INFO_BAR.value() : value);
     }
 
     public static void setDisplayMode(DisplayMode mode) {
@@ -147,7 +146,7 @@ public class TurretConfig {
 
             hudPromptDisplayMode = builder
                     .comment("Prompt display mode for turret screen: traditional | info_bar")
-                    .defineInList("hudPromptDisplayMode", DisplayMode.INFO_BAR.value(), List.of(DisplayMode.TRADITIONAL.value(), DisplayMode.INFO_BAR.value()));
+                    .define("hudPromptDisplayMode", DisplayMode.INFO_BAR.value());
             builder.pop();
 
             builder.push("Loot");
