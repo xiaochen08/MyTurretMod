@@ -37,33 +37,23 @@ public class TeleportUpgradeItem extends GenericTurretModuleItem {
         int cooldownSeconds = TeleportModuleRules.configByLevel(moduleLevel).teleportCooldownSeconds();
         String cooldownText = String.format("%.1fs", (double) cooldownSeconds);
 
-        tooltip.add(Component.literal("⚡ 传送模块 ⚡")
-                .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
-                .append(Component.literal("   "))
-                .append(Component.literal(String.format("[Lv.%d]", moduleLevel))
-                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
-
-        tooltip.add(Component.literal(">> 史诗级空间装置 <<")
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.title", moduleLevel)
+                .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD));
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.subtitle")
                 .withStyle(ChatFormatting.DARK_PURPLE));
-
-        tooltip.add(Component.literal("------------------------")
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.separator")
                 .withStyle(ChatFormatting.DARK_GRAY));
-
-        tooltip.add(Component.literal("⌛ 冷却充能: ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(cooldownText).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
-                .append(Component.literal(" (极速/MAX)").withStyle(ChatFormatting.DARK_GREEN)));
-
-        tooltip.add(Component.literal("🌌 空间稳定性: ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(Component.literal("100%").withStyle(ChatFormatting.AQUA)));
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.cooldown", cooldownText)
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.stability", "100%")
+                .withStyle(ChatFormatting.GRAY));
 
         tooltip.add(Component.empty());
-        tooltip.add(Component.literal("提供战术传送与冷却控制能力")
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.desc")
                 .withStyle(ChatFormatting.WHITE));
 
         tooltip.add(Component.empty());
-        tooltip.add(Component.literal("\"距离只是幻觉。\"")
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.quote")
                 .withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC));
     }
 }

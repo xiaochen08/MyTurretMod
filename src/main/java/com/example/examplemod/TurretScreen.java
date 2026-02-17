@@ -49,10 +49,9 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
 
-        this.modeBtn = this.addRenderableWidget(new Button.Builder(Component.literal("🛡"), (btn) -> {
+        this.modeBtn = this.addRenderableWidget(new Button.Builder(Component.literal("G"), (btn) -> {
             if (this.menu.turret != null) {
                 PacketHandler.sendToServer(new PacketToggleMode(this.menu.turret.getId()));
-                this.menu.turret.setFollowMode(!this.menu.turret.isFollowMode());
             }
         }).bounds(x + 245, y + 5, 20, 20).build());
     }
@@ -78,21 +77,21 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
         int rightX = x + 200;
 
         gfx.drawString(this.font, Component.translatable("gui.examplemod.body_info"), leftX, topY - 12, 0x404040, false);
-        gfx.drawString(this.font, "❤ 生命值: " + (int) turret.getHealth(), leftX, topY, 0xFFFF5555, false);
-        gfx.drawString(this.font, "🛡 综合护甲: " + turret.getArmorValue(), leftX, topY + gap, 0xFF5555FF, false);
-        gfx.drawString(this.font, "📱 机体等级: " + turret.getLevel(), leftX, topY + gap * 2, 0xFF55FF55, false);
-        gfx.drawString(this.font, "🔋 升级进度: " + turret.getXp(), leftX, topY + gap * 3, 0xFF00FF00, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.health_value", (int) turret.getHealth()), leftX, topY, 0xFFFF5555, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.armor_value", turret.getArmorValue()), leftX, topY + gap, 0xFF5555FF, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.level_value", turret.getLevel()), leftX, topY + gap * 2, 0xFF55FF55, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.upgrade_progress_value", turret.getXp()), leftX, topY + gap * 3, 0xFF00FF00, false);
 
         gfx.drawString(this.font, Component.translatable("gui.examplemod.tactical_terminal"), rightX, topY - 12, 0x404040, false);
 
         String dmg = String.format("%.1f", turret.getAttributeValue(Attributes.ATTACK_DAMAGE));
-        gfx.drawString(this.font, "⚿ 武器伤害: " + dmg, rightX, topY, 0xFFFFAA00, false);
-        gfx.drawString(this.font, "🔥 武器热度: " + turret.getHeat(), rightX, topY + gap, 0xFFFF5555, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.weapon_damage_value", dmg), rightX, topY, 0xFFFFAA00, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.weapon_heat_value", turret.getHeat()), rightX, topY + gap, 0xFFFF5555, false);
 
         float delay = turret.getFireDelay();
         String rate = String.format("%.1f/s", 20.0f / (delay > 0 ? delay : 20));
-        gfx.drawString(this.font, "◎ 射击频率: " + rate, rightX, topY + gap * 2, 0xFF00FFFF, false);
-        gfx.drawString(this.font, "★ 击杀数: " + turret.getKillCount(), rightX, topY + gap * 3, 0xFF555555, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.fire_rate_value", rate), rightX, topY + gap * 2, 0xFF00FFFF, false);
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.kill_count_value", turret.getKillCount()), rightX, topY + gap * 3, 0xFF555555, false);
 
         double targetRange = Math.max(0.0, turret.getAttackRange());
         if (this.cachedRange < 0) {
@@ -103,8 +102,8 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
         String rangeStr = String.format("%.0f", this.cachedRange);
         gfx.drawString(this.font, Component.translatable("gui.examplemod.range_label", rangeStr), rightX, topY + gap * 4, 0xFFFFFFFF, false);
 
-        String tpStatus = turret.hasTeleportModule() ? "ON" : "OFF";
-        gfx.drawString(this.font, "传送模块: " + tpStatus, rightX, topY + gap * 5, 0xFFFFFFFF, false);
+        String tpStatusKey = turret.hasTeleportModule() ? "gui.examplemod.state_on" : "gui.examplemod.state_off";
+        gfx.drawString(this.font, Component.translatable("gui.examplemod.teleport_module_state", Component.translatable(tpStatusKey)), rightX, topY + gap * 5, 0xFFFFFFFF, false);
 
         if (TurretConfig.getDisplayMode() == TurretConfig.DisplayMode.TRADITIONAL) {
             renderLegacyPrompt(gfx, x, y, turret);
@@ -159,13 +158,9 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
 
         String status = turret.getOverheadStatus();
         if (status != null && !status.isBlank()) {
-            prompts.add(status.replace('\n', ' '));
+            prompts.add(TurretTextResolver.resolveOverheadStatus(status).getString().replace('\n', ' '));
         }
 
-        String dialogue = turret.getOverheadDialogue();
-        if (dialogue != null && !dialogue.isBlank()) {
-            prompts.add(dialogue.replace('\n', ' '));
-        }
 
         infoBarBuffer.upsertPromptBatch(unitId, prompts, baseSeq);
         return infoBarBuffer.orderedSlots();
@@ -213,11 +208,11 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
         }
         boolean inTeam = this.menu.turret.isFollowMode();
         if (inTeam) {
-            this.modeBtn.setMessage(Component.literal("⚔"));
-            this.modeBtn.setTooltip(Tooltip.create(Component.literal("当前：跟随模式\n点击切换至定点守卫")));
+            this.modeBtn.setMessage(Component.literal("F"));
+            this.modeBtn.setTooltip(Tooltip.create(Component.translatable("gui.examplemod.mode_follow_tooltip")));
         } else {
-            this.modeBtn.setMessage(Component.literal("🛡"));
-            this.modeBtn.setTooltip(Tooltip.create(Component.literal("当前：定点守卫\n点击切换至跟随模式")));
+            this.modeBtn.setMessage(Component.literal("G"));
+            this.modeBtn.setTooltip(Tooltip.create(Component.translatable("gui.examplemod.mode_guard_tooltip")));
         }
     }
 }

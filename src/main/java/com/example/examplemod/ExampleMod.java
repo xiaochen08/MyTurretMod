@@ -86,11 +86,16 @@ import net.minecraftforge.fml.config.ModConfig;
 
 @Mod("examplemod")
 public class ExampleMod {
+    // Reduce Ender Pearl drop probability by 60% (keep 40% of configured value).
+    private static final double ENDER_PEARL_DROP_RATE_SCALE = 0.8D;
     // ✅ 1. 定义日志记录器
     private static final Logger LOGGER = LogUtils.getLogger();
     static final int TURRET_TP_PERMISSION_LEVEL = 2;
+    private static final long CAPTAIN_EVAL_INTERVAL_TICKS = 20L * 60L;
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "examplemod");
+    public static final DeferredRegister<net.minecraft.world.level.block.Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, "examplemod");
+    public static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, "examplemod");
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "examplemod");
     public static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, "examplemod");
     public static final DeferredRegister<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> LOOT_MODIFIERS = DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, "examplemod");
@@ -100,11 +105,22 @@ public class ExampleMod {
     public static final RegistryObject<Item> TELEPORT_UPGRADE_MODULE = ITEMS.register("teleport_upgrade_module", () -> new TeleportUpgradeItem(new Item.Properties().stacksTo(64)));
     public static final RegistryObject<Item> MULTI_SHOT_UPGRADE_MODULE = ITEMS.register("multi_shot_upgrade_module", () -> new MultiShotUpgradeModuleItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
-    
+    public static final RegistryObject<Item> PLAYER_MANUAL = ITEMS.register("player_manual", () -> new PlayerManualItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<net.minecraft.world.level.block.Block> SUMMON_TERMINAL_BLOCK = BLOCKS.register("summon_terminal",
+            () -> new SummonTerminalBlock(net.minecraft.world.level.block.state.BlockBehaviour.Properties.copy(net.minecraft.world.level.block.Blocks.AMETHYST_BLOCK).lightLevel(state -> state.getValue(SummonTerminalBlock.LIT) ? 8 : 0)));
+    public static final RegistryObject<Item> SUMMON_TERMINAL_ITEM = ITEMS.register("summon_terminal",
+            () -> new net.minecraft.world.item.BlockItem(SUMMON_TERMINAL_BLOCK.get(), new Item.Properties()));
+
     public static final RegistryObject<com.mojang.serialization.Codec<? extends net.minecraftforge.common.loot.IGlobalLootModifier>> ADD_ENDER_PEARL = LOOT_MODIFIERS.register("add_ender_pearl", EnderPearlLootModifier.CODEC);
 
     public static final RegistryObject<net.minecraft.world.inventory.MenuType<TurretMenu>> TURRET_MENU = MENUS.register("turret_menu",
             () -> net.minecraftforge.common.extensions.IForgeMenuType.create(TurretMenu::new));
+    public static final RegistryObject<net.minecraft.world.inventory.MenuType<SummonTerminalMenu>> SUMMON_TERMINAL_MENU = MENUS.register("summon_terminal_menu",
+            () -> net.minecraftforge.common.extensions.IForgeMenuType.create(SummonTerminalMenu::new));
+    public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SummonTerminalBlockEntity>> SUMMON_TERMINAL_BE = BLOCK_ENTITY_TYPES.register(
+            "summon_terminal",
+            () -> net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(SummonTerminalBlockEntity::new, SUMMON_TERMINAL_BLOCK.get()).build(null)
+    );
 
     public static final RegistryObject<EntityType<SkeletonTurret>> TURRET_ENTITY = ENTITIES.register("skeleton_turret",
             () -> EntityType.Builder.of(SkeletonTurret::new, MobCategory.MONSTER)
@@ -123,11 +139,13 @@ public class ExampleMod {
 
     public ExampleMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        
+
         // Register Config
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, TurretConfig.COMMON_SPEC);
-        
+
         ITEMS.register(modEventBus);
+        BLOCKS.register(modEventBus);
+        BLOCK_ENTITY_TYPES.register(modEventBus);
         ENTITIES.register(modEventBus);
         MENUS.register(modEventBus);
         LOOT_MODIFIERS.register(modEventBus);
@@ -216,6 +234,8 @@ public class ExampleMod {
             event.accept(TELEPORT_UPGRADE_MODULE);
             event.accept(MULTI_SHOT_UPGRADE_MODULE);
             event.accept(DEATH_RECORD_ITEM);
+            event.accept(PLAYER_MANUAL);
+            event.accept(SUMMON_TERMINAL_ITEM);
 
             for (int level = 1; level <= TurretUpgradeTierPlan.maxLevel(); level++) {
                 ItemStack teleportStack = new ItemStack(TELEPORT_UPGRADE_MODULE.get());
@@ -227,6 +247,9 @@ public class ExampleMod {
                 event.accept(multiShotStack);
             }
         }
+        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(SUMMON_TERMINAL_ITEM);
+        }
     }
 
     private void addEntityAttributes(EntityAttributeCreationEvent event) {
@@ -236,12 +259,12 @@ public class ExampleMod {
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGH)
     public void onLivingDrops(LivingDropsEvent event) {
         if (event.getEntity().level().isClientSide) return;
-        
+
         // 1. SkeletonTurret Death Record Drop (100%, deterministic, exactly one)
         if (event.getEntity() instanceof SkeletonTurret turret) {
             DamageSource source = event.getSource();
-            LOGGER.info("[DropSystem] Processing drops for SkeletonTurret #{}. Source: {}, Y-Pos: {}", 
-                turret.getEntityData().get(SkeletonTurret.UNIT_ID), 
+            LOGGER.info("[DropSystem] Processing drops for SkeletonTurret #{}. Source: {}, Y-Pos: {}",
+                turret.getEntityData().get(SkeletonTurret.UNIT_ID),
                 source.getMsgId(),
                 turret.getY());
 
@@ -268,18 +291,19 @@ public class ExampleMod {
             LOGGER.info("[DropSystem] ✅ Forced Death Record drop at ({}, {}, {}), source={}",
                     turret.getX(), turret.getY(), turret.getZ(), source.getMsgId());
             // Turrets don't drop pearls
-            return; 
+            return;
         }
 
-        // 5%-15% chance for hostile mobs to drop Ender Pearls (Configurable)
+        // Ender Pearl drop chance for hostile mobs (configurable), globally scaled down by 60%.
         if (event.getEntity() instanceof Monster) {
             // Get values from config
             double baseChance = TurretConfig.COMMON.enderPearlDropChanceBase.get();
             double bonusChance = TurretConfig.COMMON.enderPearlDropChanceBonus.get();
-            
+
             // Random chance between base and base + bonus
-            double chance = baseChance + (event.getEntity().getRandom().nextDouble() * bonusChance);
-            
+            double rawChance = baseChance + (event.getEntity().getRandom().nextDouble() * bonusChance);
+            double chance = Math.max(0.0D, Math.min(1.0D, rawChance * ENDER_PEARL_DROP_RATE_SCALE));
+
             if (event.getEntity().getRandom().nextDouble() < chance) {
                 event.getDrops().add(new ItemEntity(
                     event.getEntity().level(),
@@ -306,6 +330,35 @@ public class ExampleMod {
             player.sendSystemMessage(Component.literal("§6[系统] §f欢迎指挥官！已发放 §b3x 毁灭守望者法杖 §f作为新地图初始资金。"));
             player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
             data.putBoolean("HasReceivedStarterKit_Final", true);
+        }
+
+        ensurePlayerManual(player);
+    }
+
+    private void ensurePlayerManual(Player player) {
+        boolean hasManual = false;
+        boolean updated = false;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (!stack.is(PLAYER_MANUAL.get())) {
+                continue;
+            }
+            hasManual = true;
+            if (PlayerManualItem.ensureVersion(stack)) {
+                updated = true;
+            }
+        }
+
+        if (!hasManual) {
+            ItemStack manual = new ItemStack(PLAYER_MANUAL.get());
+            PlayerManualItem.ensureVersion(manual);
+            player.getInventory().add(manual);
+            player.sendSystemMessage(Component.translatable("message.examplemod.manual_given"));
+            return;
+        }
+
+        if (updated) {
+            player.sendSystemMessage(Component.translatable("message.examplemod.manual_updated", PlayerManualItem.CURRENT_VERSION));
         }
     }
 
@@ -365,11 +418,25 @@ public class ExampleMod {
 
                 FakePlayer fakePlayer = FakePlayerFactory.get(serverLevel, TURRET_FAKE_PLAYER_PROFILE);
                 fakePlayer.setPos(arrow.getX(), arrow.getY(), arrow.getZ());
+                LivingEntity attributedShooter = shooter instanceof LivingEntity livingShooter ? livingShooter : fakePlayer;
 
                 float damageAmount = (float) (arrow.getBaseDamage() * arrow.getDeltaMovement().length());
                 if (damageAmount < 1.0f) damageAmount = (float) arrow.getBaseDamage();
 
-                livingTarget.hurt(serverLevel.damageSources().arrow(arrow, fakePlayer), damageAmount);
+                // Attribute primary projectile damage to the turret owner entity (not fake player),
+                // so kill-score/upgrade hooks run on SkeletonTurret correctly.
+                boolean dealt = livingTarget.hurt(serverLevel.damageSources().arrow(arrow, attributedShooter), damageAmount);
+                if (!dealt && shooter instanceof SkeletonTurret turretShooter) {
+                    LivingEntity locked = turretShooter.getTarget();
+                    if (locked != null && locked.getUUID().equals(livingTarget.getUUID())) {
+                        // 保底伤害：当骷髅已锁定目标且箭矢伤害被拦截时，改用近战/魔法源兜底
+                        livingTarget.invulnerableTime = 0;
+                        boolean fallback = livingTarget.hurt(serverLevel.damageSources().mobAttack(turretShooter), Math.max(1.0f, damageAmount * 0.6f));
+                        if (!fallback) {
+                            livingTarget.hurt(serverLevel.damageSources().magic(), 1.0f);
+                        }
+                    }
+                }
 
                 if (tier >= 4 && shooter instanceof LivingEntity turret) {
                     float healRate = (tier == 5) ? 0.1f : 0.0f;
@@ -393,7 +460,7 @@ public class ExampleMod {
                                 v.getPersistentData().getBoolean("IsFriendlyZombie") ||
                                 v.getPersistentData().getBoolean("IsFriendlyCreeper");
                         if ((v instanceof Enemy || v instanceof IronGolem) && !isFriendly) {
-                            v.hurt(serverLevel.damageSources().explosion(null, fakePlayer), 2.5f);
+                            v.hurt(serverLevel.damageSources().explosion(null, attributedShooter), 2.5f);
                             if (level.random.nextFloat() < 0.3f) v.setSecondsOnFire(3);
                         }
                     });
@@ -406,7 +473,12 @@ public class ExampleMod {
                         bolt.setVisualOnly(true);
                         serverLevel.addFreshEntity(bolt);
                     }
-                    livingTarget.hurt(serverLevel.damageSources().lightningBolt(), 7.5f);
+                    if (shooter instanceof SkeletonTurret turretShooter) {
+                        // Keep bonus lightning visuals, but attribute damage to turret for XP/upgrade chain.
+                        livingTarget.hurt(serverLevel.damageSources().mobAttack(turretShooter), 7.5f);
+                    } else {
+                        livingTarget.hurt(serverLevel.damageSources().lightningBolt(), 7.5f);
+                    }
                 }
             }
             projectile.discard();
@@ -600,97 +672,9 @@ public class ExampleMod {
     // ==========================================
     // ✅ 核心修复：灵魂绑定 (死后继承数据)
     // ==========================================
-    @SubscribeEvent
-    public void onPlayerClone(PlayerEvent.Clone event) {
-        if (event.getEntity().level().isClientSide) return;
 
-        // 日志：记录克隆事件
-        LOGGER.info("✨ [灵魂绑定] 触发克隆事件. 玩家: {}, 是死亡重生: {}", event.getEntity().getName().getString(), event.isWasDeath());
 
-        if (event.isWasDeath()) {
-            ServerPlayer oldPlayer = (ServerPlayer) event.getOriginal();
-            ServerPlayer newPlayer = (ServerPlayer) event.getEntity();
 
-            CompoundTag oldData = oldPlayer.getPersistentData();
-            CompoundTag newData = newPlayer.getPersistentData();
-
-            // 1. 继承炮台数据
-            if (oldData.contains("PackedTurrets")) {
-                ListTag packed = oldData.getList("PackedTurrets", 10);
-                LOGGER.info("📦 [灵魂绑定] 发现旧身体数据! 包含 {} 个炮台. 正在转移...", packed.size());
-                newData.put("PackedTurrets", packed);
-                LOGGER.info("✅ [灵魂绑定] 数据转移完成!");
-            } else {
-                LOGGER.warn("⚠️ [灵魂绑定] 旧身体里没有 'PackedTurrets' 数据. 上一步的打包可能失败了?");
-            }
-
-            // 2. 继承新手礼包记录
-            if (oldData.contains("HasReceivedStarterKit_Final")) {
-                newData.putBoolean("HasReceivedStarterKit_Final", true);
-            }
-        }
-    }
-
-    // ==========================================
-    // ✅ 死亡事件：将炮台打包进旧身体
-    // ==========================================
-    @SubscribeEvent
-    public void onLivingDeath(LivingDeathEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            if (!player.level().isClientSide) {
-                LOGGER.info("☠️ [死亡事件] 玩家 {} 死亡，开始执行紧急撤离程序...", player.getName().getString());
-                packTurretsOnDeath(player);
-            }
-            return;
-        }
-
-        Level level = event.getEntity().level();
-        if (level.isClientSide) return;
-
-        Entity deceased = event.getEntity();
-        SkeletonTurret turret = null;
-
-        if (event.getSource().getEntity() instanceof SkeletonTurret t) {
-            turret = t;
-        } else if (deceased.getPersistentData().hasUUID("TurretAssistUUID")) {
-            UUID turretId = deceased.getPersistentData().getUUID("TurretAssistUUID");
-            if (level instanceof ServerLevel sl) {
-                Entity entity = sl.getEntity(turretId);
-                if (entity instanceof SkeletonTurret t && t.isAlive()) {
-                    turret = t;
-                }
-            }
-        }
-
-        if (turret != null) {
-            turret.incrementKillCount();
-            int tier = turret.getTier();
-            float chance = 0.08f + (tier * 0.044f);
-
-            if (level.random.nextFloat() < chance) {
-                boolean spawnCreeper = level.random.nextBoolean();
-                int lifeSeconds = 3 + (int) (tier * 2.4f);
-                int lifeTicks = lifeSeconds * 20;
-
-                if (spawnCreeper) {
-                    spawnFriendlyCreeper(level, deceased.position(), lifeTicks);
-                } else {
-                    spawnEliteZombie(level, deceased.position(), tier, lifeTicks);
-                }
-            }
-        }
-    }
-
-    // ==========================================
-    // ✅ 重生事件：从新身体解包炮台
-    // ==========================================
-    @SubscribeEvent
-    public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity().level().isClientSide) return;
-        ServerPlayer player = (ServerPlayer) event.getEntity();
-        LOGGER.info("🌟 [重生事件] 玩家 {} 重生，尝试解包炮台...", player.getName().getString());
-        unpackTurretsFromPlayer(player);
-    }
 
     // ==========================================
     // ✅ 实时更新：小队管理与位置记录
@@ -706,18 +690,18 @@ public class ExampleMod {
             data.putDouble("LastKnownX", player.getX());
             data.putDouble("LastKnownY", player.getY());
             data.putDouble("LastKnownZ", player.getZ());
-
-            if (player.level() instanceof ServerLevel sl) {
-                manageTurretSquad(player, sl);
+        }
+        if (player.level() instanceof ServerLevel sl) {
+            long gameTime = sl.getGameTime();
+            if (isCaptainEvaluationTick(gameTime)) {
+                manageTurretSquad(player, sl, gameTime);
             }
         }
 
-        // 自动解包 (防止跨维度传送后数据残留)
-        if (data.contains("PackedTurrets")) {
-            // 这里加个日志可能会刷屏，所以我们不加，或者加个只触发一次的逻辑
-            // 为了性能，我们信任 unpackTurretsFromPlayer 的内部判断
-            unpackTurretsFromPlayer(player);
-        }
+    }
+
+    static boolean isCaptainEvaluationTick(long gameTime) {
+        return gameTime > 0 && gameTime % CAPTAIN_EVAL_INTERVAL_TICKS == 0;
     }
 
     @SubscribeEvent
@@ -763,132 +747,95 @@ public class ExampleMod {
         if (isAttackerFriendly && isTargetFriendly) event.setNewTarget(null);
     }
 
-    // ==========================================
-    // 辅助方法区域
-    // ==========================================
 
-    private void packTurretsOnDeath(ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
-        List<SkeletonTurret> allTurrets = new ArrayList<>();
-        for (Entity entity : level.getAllEntities()) {
-            if (entity instanceof SkeletonTurret t) {
-                if (t.getOwnerUUID() != null && t.getOwnerUUID().equals(player.getUUID())) {
-                    allTurrets.add(t);
-                }
-            }
-        }
 
-        LOGGER.info("🔍 [死亡打包] 扫描到玩家拥有 {} 个炮台实体", allTurrets.size());
-
-        if (allTurrets.isEmpty()) return;
-
-        CompoundTag playerData = player.getPersistentData();
-        ListTag packedList = new ListTag();
-
-        int count = 0;
-        for (SkeletonTurret turret : allTurrets) {
-            if (turret.isFollowing()) {
-                CompoundTag turretData = new CompoundTag();
-                if (turret.saveAsPassenger(turretData)) {
-                    packedList.add(turretData);
-                    turret.discard();
-                    count++;
-                }
-            }
-        }
-
-        if (count > 0) {
-            playerData.put("PackedTurrets", packedList);
-            player.sendSystemMessage(Component.literal("§b[协议] 紧急撤离程序启动！已将 §e" + count + "§b 名护卫上传至数据云端。"));
-            LOGGER.info("✅ [死亡打包] 成功打包 {} 个炮台到 NBT", count);
-        } else {
-            LOGGER.info("⚠️ [死亡打包] 没有处于跟随状态的炮台，跳过打包");
-        }
-    }
-
-    private void unpackTurretsFromPlayer(Player player) {
-        CompoundTag data = player.getPersistentData();
-        if (!data.contains("PackedTurrets", 9)) return;
-
-        ListTag packedList = data.getList("PackedTurrets", 10);
-        if (packedList.isEmpty()) return;
-
-        LOGGER.info("📂 [解包程序] 正在从 NBT 恢复 {} 个炮台...", packedList.size());
-
-        Level level = player.level();
-        int count = 0;
-
-        for (int i = 0; i < packedList.size(); i++) {
-            CompoundTag turretData = packedList.getCompound(i);
-            SkeletonTurret turret = TURRET_ENTITY.get().create(level);
-            if (turret != null) {
-                turret.load(turretData);
-                // 关键：在玩家身边随机散开，防止叠在一起
-                double offsetX = (player.getRandom().nextDouble() - 0.5) * 4.0;
-                double offsetZ = (player.getRandom().nextDouble() - 0.5) * 4.0;
-                turret.moveTo(player.getX() + offsetX, player.getY(), player.getZ() + offsetZ, player.getYRot(), 0);
-
-                // 使用公开方法修改状态
-                turret.setFollowing(true);
-
-                level.addFreshEntity(turret);
-                count++;
-            }
-        }
-
-        data.remove("PackedTurrets");
-        player.sendSystemMessage(Component.literal("§a[协议] 灵魂绑定生效！§e" + count + "§a 名护卫已在新坐标重构。"));
-        LOGGER.info("✅ [解包程序] 成功恢复 {} 个炮台", count);
-    }
 
     // ==========================================
     // ✅ 战术中心：小队管理逻辑 (已升级选拔算法)
     // ==========================================
-    private void manageTurretSquad(Player player, ServerLevel level) {
+    private void manageTurretSquad(Player player, ServerLevel level, long evalTick) {
         // 1. 获取所有跟随我的、活着的炮台
         List<SkeletonTurret> allFollowers = level.getEntitiesOfClass(SkeletonTurret.class,
                 player.getBoundingBox().inflate(200.0),
                 t -> t.getOwnerUUID() != null && t.getOwnerUUID().equals(player.getUUID()) && t.isFollowing() && t.isAlive()
         );
 
-        if (allFollowers.isEmpty()) return;
+        if (allFollowers.isEmpty()) {
+            LOGGER.info("[CaptainEval] tick={} owner={} oldCaptain=none newCaptain=none reason=NO_FOLLOWERS scanned=0",
+                    evalTick, player.getUUID());
+            return;
+        }
 
-        // 2. 排序选拔：等级高优先 > 杀敌多优先 > 入队早优先
-        allFollowers.sort((t1, t2) -> {
-            // 先比等级 (高 -> 低)
-            int tierCompare = Integer.compare(t2.getTier(), t1.getTier());
-            if (tierCompare != 0) return tierCompare;
-
-            // 再比杀敌数 (多 -> 少)
-            return Integer.compare(t2.getKillCount(), t1.getKillCount());
-        });
-
-        // 3. 分配职位 & 晋升通报
-        for (int i = 0; i < allFollowers.size(); i++) {
-            SkeletonTurret t = allFollowers.get(i);
-
-            // --- 队长位 (第1名) ---
-            if (i == 0) {
-                // 如果这个人之前不是队长，说明队长换人了！
-                if (!t.isCaptain()) {
-                    t.setCaptain(true);
-                    t.setSquadMember(false);
-                    // 播放音效和提示
-                    t.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-                    player.sendSystemMessage(Component.literal("§6[战术] 队长已变更！新任队长: §e" + t.getDisplayName().getString()));
-                }
+        SkeletonTurret oldCaptain = null;
+        java.util.Map<String, SkeletonTurret> byId = new java.util.HashMap<>();
+        java.util.List<SquadCaptainSelection.Candidate> candidates = new java.util.ArrayList<>();
+        for (SkeletonTurret t : allFollowers) {
+            String id = t.getStringUUID();
+            byId.put(id, t);
+            candidates.add(new SquadCaptainSelection.Candidate(
+                    id,
+                    t.getSquadScore(),
+                    t.getTier(),
+                    t.getKillCount(),
+                    t.tickCount
+            ));
+            if (t.isCaptain() && oldCaptain == null) {
+                oldCaptain = t;
             }
-            // --- 队员位 (第2-8名) ---
-            else if (i < 8) {
-                if (t.isCaptain()) t.setCaptain(false); // 撤职
-                if (!t.isSquadMember()) t.setSquadMember(true); // 设为队员
+        }
+
+        SquadCaptainSelection.Decision decision = SquadCaptainSelection.evaluate(
+                candidates,
+                oldCaptain == null ? null : oldCaptain.getStringUUID()
+        );
+
+        SkeletonTurret newCaptain = byId.get(decision.newCaptainId());
+        if (newCaptain == null && !allFollowers.isEmpty()) {
+            newCaptain = allFollowers.get(0);
+        }
+
+        java.util.List<SkeletonTurret> ordered = new java.util.ArrayList<>();
+        for (String id : decision.rankedIds()) {
+            SkeletonTurret t = byId.get(id);
+            if (t != null) {
+                ordered.add(t);
             }
-            // --- 编外人员 (第9名以后) ---
-            else {
+        }
+        if (newCaptain != null) {
+            ordered.remove(newCaptain);
+            ordered.add(0, newCaptain);
+        }
+
+        java.util.Set<SkeletonTurret> squadSlots = new java.util.HashSet<>();
+        int maxSquad = Math.min(8, ordered.size());
+        for (int i = 0; i < maxSquad; i++) {
+            squadSlots.add(ordered.get(i));
+        }
+
+        for (SkeletonTurret t : allFollowers) {
+            if (t == newCaptain) {
+                if (!t.isCaptain()) t.setCaptain(true);
+                if (t.isSquadMember()) t.setSquadMember(false);
+            } else if (squadSlots.contains(t)) {
+                if (t.isCaptain()) t.setCaptain(false);
+                if (!t.isSquadMember()) t.setSquadMember(true);
+            } else {
                 if (t.isCaptain()) t.setCaptain(false);
                 if (t.isSquadMember()) t.setSquadMember(false);
             }
         }
+
+        if (oldCaptain != newCaptain && newCaptain != null) {
+            newCaptain.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            player.sendSystemMessage(Component.literal("§6[战术] 队长已变更！新任队长: §e" + newCaptain.getDisplayName().getString()));
+        }
+
+        String oldCaptainId = oldCaptain == null ? "none" : oldCaptain.getStringUUID();
+        String newCaptainId = newCaptain == null ? "none" : newCaptain.getStringUUID();
+        String oldCaptainUnit = oldCaptain == null ? "none" : String.format("%03d", Math.floorMod(oldCaptain.getEntityData().get(SkeletonTurret.UNIT_ID), 1000));
+        String newCaptainUnit = newCaptain == null ? "none" : String.format("%03d", Math.floorMod(newCaptain.getEntityData().get(SkeletonTurret.UNIT_ID), 1000));
+        LOGGER.info("[CaptainEval] tick={} owner={} oldCaptain={} oldUnit=#{} newCaptain={} newUnit=#{} reason={} scanned={}",
+                evalTick, player.getUUID(), oldCaptainId, oldCaptainUnit, newCaptainId, newCaptainUnit, decision.reason(), allFollowers.size());
     }
     private void spawnEliteZombie(Level level, net.minecraft.world.phys.Vec3 pos, int tier, int lifeTicks) {
         Zombie zombie = EntityType.ZOMBIE.create(level);
@@ -940,18 +887,6 @@ public class ExampleMod {
         zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
         zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
     }
-    // ==========================================
-    // ✅ 新增：屏幕左侧战术面板 HUD
-    // ==========================================
-// ==========================================
-    // ✅ 战术面板 HUD：实时监控 (已修复渲染报错)
-    // ==========================================
-// ==========================================
-    // ✅ 战术面板 HUD (已升级：居中 + 高清背景)
-    // ==========================================
-
-// ==========================================
-    // ✅ 战术面板 HUD (专业分栏设计版)
     // ==========================================
 
 // ==========================================

@@ -1,2 +1,8 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalize text files and keep binary assets untouched
+* text=auto eol=lf
+
+*.java text eol=lf
+*.json text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.png binary

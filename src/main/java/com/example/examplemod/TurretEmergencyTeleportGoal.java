@@ -24,6 +24,7 @@ public class TurretEmergencyTeleportGoal extends Goal {
     @Override
     public boolean canUse() {
         if (turret.level().isClientSide) return false;
+        if (!turret.isFollowing()) return false;
         
         // Check for Teleport Module and Cooldown
         if (!turret.hasTeleportModule() || !turret.canTeleport()) return false;

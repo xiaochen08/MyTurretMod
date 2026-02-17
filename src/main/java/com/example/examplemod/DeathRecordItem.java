@@ -7,7 +7,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -56,13 +55,27 @@ public class DeathRecordItem extends Item {
     }
 
     @Override
+    public Component getName(ItemStack stack) {
+        CompoundTag data = DeathPlaqueDataCodec.getDataTag(stack);
+        int id = data.getInt("UnitID");
+        if (id > 0) {
+            return Component.translatable("item.examplemod.death_record_card.named", String.format("%03d", id));
+        }
+        return super.getName(stack);
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         CompoundTag data = DeathPlaqueDataCodec.getDataTag(stack);
         if (data == null) return;
 
         int id = data.getInt("UnitID");
-        tooltip.add(Component.literal("编号#" + id + " 铭牌").withStyle(ChatFormatting.GOLD));
-        tooltip.add(Component.literal("等级: " + data.getInt("Tier") + "  击杀: " + data.getInt("KillCount")).withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.literal("右键地面召唤并恢复对应骷髅炮台").withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.translatable("tooltip.examplemod.death_record.id_plaque", String.format("%03d", id)).withStyle(ChatFormatting.GOLD));
+        tooltip.add(Component.translatable(
+                "tooltip.examplemod.death_record.level_kills",
+                data.getInt("Tier"),
+                data.getInt("KillCount"))
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.examplemod.death_record.use_on_ground").withStyle(ChatFormatting.AQUA));
     }
 }
