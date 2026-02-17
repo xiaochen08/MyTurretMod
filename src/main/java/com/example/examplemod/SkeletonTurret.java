@@ -46,6 +46,11 @@ import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.PickaxeItem;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.HoeItem;
+import net.minecraft.world.item.ShovelItem;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -145,7 +150,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (tier >= 4) amplifier = 3;
         else if (tier >= 2) amplifier = 2;
 
-        this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 100, amplifier)); // 5 seconds duration
+        this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 100, amplifier, false, false, false)); // 5 seconds duration, no status particles
 
         // Spawn particles
         spawnTeleportParticles();
@@ -847,7 +852,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             }
 
             // ==================== 🧩 日常功能 ====================
-            if (this.getHealth() < this.getMaxHealth()) autoEat();
+            autoEat();
             if (this.tickCount % 20 == 0) updateInfoBookAndSlots();
             // --- 🗣�?语音系统挂载: 闲聊 & 状�?---
 
@@ -1262,7 +1267,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 }
 
         // 自动吃东�?
-        if (this.getHealth() < this.getMaxHealth()) autoEat();
+        autoEat();
 
         // 更新书本
         if (this.tickCount % 20 == 0) updateInfoBookAndSlots();
@@ -1403,6 +1408,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         // �?新增：清剿模�?地毯式搜�?(优先�?3)
         this.goalSelector.addGoal(3, new PurgeMoveGoal(this));
+        this.goalSelector.addGoal(3, new FollowMiningAvoidGoal(this));
 
         this.goalSelector.addGoal(5, new TurretScavengeGoal(this, 1.15));
         // �?新增 2：护主模�?(攻击主人的敌�?
@@ -1670,22 +1676,55 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             eatCooldown--;
             return;
         }
-        for (int i = 12; i < 37; i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (stack.isEdible()) {
-                FoodProperties food = stack.getItem().getFoodProperties(stack, this);
-                if (food != null) {
-                    this.heal((float) food.getNutrition());
-                    this.playSound(SoundEvents.GENERIC_EAT, 1.0f, 1.0f);
-                    if (this.level() instanceof ServerLevel sl) {
-                        sl.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, stack), this.getX(), this.getEyeY(), this.getZ(), 10, 0.1, 0.1, 0.1, 0.1);
-                    }
-                    stack.shrink(1);
-                    eatCooldown = 40;
-                    break;
-                }
-            }
+        float hp = this.getHealth();
+        float maxHp = this.getMaxHealth();
+        if (maxHp <= 0.0f) return;
+        float ratio = hp / maxHp;
+
+        if (ratio >= 0.80f) return;
+        boolean allowRareFood = ratio < 0.30f;
+
+        ItemStack selected = findFoodForHeal(allowRareFood);
+        if (selected == null || selected.isEmpty()) {
+            return;
         }
+        FoodProperties food = selected.getItem().getFoodProperties(selected, this);
+        if (food == null) {
+            return;
+        }
+
+        this.heal((float) food.getNutrition());
+        this.playSound(SoundEvents.GENERIC_EAT, 1.0f, 1.0f);
+        if (this.level() instanceof ServerLevel sl) {
+            sl.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, selected), this.getX(), this.getEyeY(), this.getZ(), 10, 0.1, 0.1, 0.1, 0.1);
+            sl.sendParticles(ParticleTypes.HEART, this.getX(), this.getEyeY() + 0.2, this.getZ(), 6, 0.25, 0.2, 0.25, 0.01);
+        }
+        selected.shrink(1);
+        eatCooldown = 40;
+    }
+
+    private ItemStack findFoodForHeal(boolean allowRareFood) {
+        ItemStack fallbackRare = ItemStack.EMPTY;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.isEmpty() || !stack.isEdible()) continue;
+            boolean rare = isRareFood(stack);
+            if (rare && !allowRareFood) {
+                if (fallbackRare.isEmpty()) {
+                    fallbackRare = stack;
+                }
+                continue;
+            }
+            return stack;
+        }
+        return allowRareFood ? fallbackRare : ItemStack.EMPTY;
+    }
+
+    private boolean isRareFood(ItemStack stack) {
+        Item item = stack.getItem();
+        return item == Items.GOLDEN_APPLE
+                || item == Items.ENCHANTED_GOLDEN_APPLE
+                || item == Items.GOLDEN_CARROT;
     }
 
     public void registerHit() {
@@ -3573,6 +3612,29 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         setFollowMode(isFollowing);
     }
 
+    private static boolean isMiningAvoidTool(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        Item item = stack.getItem();
+        return item instanceof PickaxeItem
+                || item instanceof AxeItem
+                || item instanceof HoeItem
+                || item instanceof ShovelItem
+                || item instanceof FishingRodItem;
+    }
+
+    private static boolean ownerIsUsingMiningAvoidTool(LivingEntity owner) {
+        if (!(owner instanceof Player player)) return false;
+        return isMiningAvoidTool(player.getMainHandItem()) || isMiningAvoidTool(player.getOffhandItem());
+    }
+
+    private static boolean isInsideOwnerCenterView(LivingEntity owner, SkeletonTurret turret) {
+        net.minecraft.world.phys.Vec3 look = owner.getLookAngle();
+        net.minecraft.world.phys.Vec3 toTurret = turret.position().subtract(owner.getEyePosition());
+        if (toTurret.lengthSqr() < 1.0E-6) return true;
+        double dot = look.normalize().dot(toTurret.normalize());
+        return dot >= 0.80D;
+    }
+
     private void enforceGuardFreeze() {
         this.getNavigation().stop();
         this.setTarget(null);
@@ -3592,6 +3654,207 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             this.guardLockValid = true;
         }
         this.hurtMarked = true;
+    }
+
+    static class FollowMiningAvoidGoal extends Goal {
+        private final SkeletonTurret turret;
+        private LivingEntity owner;
+        private int repathCooldown;
+        private int centerTicks;
+
+        public FollowMiningAvoidGoal(SkeletonTurret turret) {
+            this.turret = turret;
+            this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            LivingEntity owner = this.turret.getOwner();
+            if (owner == null) return false;
+            if (!this.turret.isFollowing()) return false;
+            if (this.turret.isPurgeActive()) return false;
+            if (this.turret.isCommandScavenging()) return false;
+            if (this.turret.getTarget() != null) return false;
+            if (!ownerIsUsingMiningAvoidTool(owner)) return false;
+            if (!isInsideOwnerCenterView(owner, this.turret)) return false;
+            if (this.turret.distanceToSqr(owner) > 16.0 * 16.0) return false;
+            this.owner = owner;
+            return true;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            if (this.owner == null || !this.owner.isAlive()) return false;
+            if (!this.turret.isFollowing()) return false;
+            if (this.turret.isPurgeActive()) return false;
+            if (this.turret.isCommandScavenging()) return false;
+            if (this.turret.getTarget() != null) return false;
+            return ownerIsUsingMiningAvoidTool(this.owner) && isInsideOwnerCenterView(this.owner, this.turret);
+        }
+
+        @Override
+        public void start() {
+            this.repathCooldown = 0;
+            this.centerTicks = 0;
+            this.turret.getNavigation().stop();
+        }
+
+        @Override
+        public void stop() {
+            this.centerTicks = 0;
+        }
+
+        @Override
+        public void tick() {
+            if (this.owner == null) return;
+            this.turret.getLookControl().setLookAt(this.owner, 10.0F, (float)this.turret.getMaxHeadXRot());
+            this.centerTicks++;
+
+            if (this.turret.isInWaterOrBubble()) {
+                moveToNearestLand();
+                return;
+            }
+
+            if (this.repathCooldown > 0) {
+                this.repathCooldown--;
+            }
+            if (this.repathCooldown > 0) {
+                return;
+            }
+            this.repathCooldown = 8;
+
+            net.minecraft.world.phys.Vec3 retreat = MiningFollowAvoidanceLogic.computeRetreatPosition(
+                    this.turret.position(),
+                    this.owner.position(),
+                    this.owner.getLookAngle(),
+                    3.5
+            );
+
+            boolean moved = this.turret.getNavigation().moveTo(retreat.x, retreat.y, retreat.z, 1.25);
+            boolean tooClose = this.turret.distanceToSqr(this.owner) < (3.0 * 3.0);
+            if ((!moved || tooClose) && this.centerTicks >= 20) {
+                tryTeleportOffCenter();
+                this.centerTicks = 0;
+            }
+        }
+
+        private void moveToNearestLand() {
+            BlockPos land = findOwnerNearbyLandOutsideRadius(8.0, 18.0);
+            if (land == null) {
+                land = findNearestLandBlock();
+            }
+            if (land == null) {
+                return;
+            }
+
+            double tx = land.getX() + 0.5;
+            double ty = land.getY();
+            double tz = land.getZ() + 0.5;
+            if (this.turret.hasTeleportModule() && this.turret.canTeleport()) {
+                this.turret.moveTo(tx, ty, tz, this.turret.getYRot(), this.turret.getXRot());
+                this.turret.getNavigation().stop();
+                this.turret.setTeleportCooldown(this.turret.getMaxTeleportCooldown());
+                this.turret.notifyTeleport();
+                this.centerTicks = 0;
+                return;
+            }
+            this.turret.getNavigation().moveTo(tx, ty, tz, 1.35);
+        }
+
+        private BlockPos findOwnerNearbyLandOutsideRadius(double minRadius, double maxRadius) {
+            if (this.owner == null) return null;
+            Level level = this.turret.level();
+            BlockPos ownerPos = this.owner.blockPosition();
+            BlockPos best = null;
+            double bestDistToTurret = Double.MAX_VALUE;
+            double minSqr = minRadius * minRadius;
+            double maxSqr = maxRadius * maxRadius;
+
+            int max = (int)Math.ceil(maxRadius);
+            for (int dx = -max; dx <= max; dx++) {
+                for (int dz = -max; dz <= max; dz++) {
+                    double radialSqr = dx * dx + dz * dz;
+                    if (radialSqr <= minSqr || radialSqr > maxSqr) continue;
+                    for (int dy = 3; dy >= -4; dy--) {
+                        BlockPos feet = ownerPos.offset(dx, dy, dz);
+                        if (!isDryStandable(level, feet)) continue;
+                        double distToTurret = feet.distSqr(this.turret.blockPosition());
+                        if (distToTurret < bestDistToTurret) {
+                            bestDistToTurret = distToTurret;
+                            best = feet;
+                        }
+                    }
+                }
+            }
+            return best;
+        }
+
+        private BlockPos findNearestLandBlock() {
+            Level level = this.turret.level();
+            BlockPos origin = this.turret.blockPosition();
+            BlockPos best = null;
+            double bestDist = Double.MAX_VALUE;
+
+            for (int dx = -6; dx <= 6; dx++) {
+                for (int dz = -6; dz <= 6; dz++) {
+                    for (int dy = 3; dy >= -4; dy--) {
+                        BlockPos feet = origin.offset(dx, dy, dz);
+                        if (!isDryStandable(level, feet)) {
+                            continue;
+                        }
+
+                        double dist = feet.distSqr(origin);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            best = feet;
+                        }
+                    }
+                }
+            }
+            return best;
+        }
+
+        private boolean isDryStandable(Level level, BlockPos feet) {
+            BlockPos head = feet.above();
+            BlockPos ground = feet.below();
+            BlockState feetState = level.getBlockState(feet);
+            BlockState headState = level.getBlockState(head);
+            BlockState groundState = level.getBlockState(ground);
+            boolean hasRoom = !feetState.blocksMotion() && !headState.blocksMotion();
+            boolean drySpace = feetState.getFluidState().isEmpty() && headState.getFluidState().isEmpty();
+            boolean solidGround = groundState.blocksMotion() && groundState.getFluidState().isEmpty();
+            return hasRoom && drySpace && solidGround;
+        }
+
+        private void tryTeleportOffCenter() {
+            if (!this.turret.hasTeleportModule()) return;
+            if (!this.turret.canTeleport()) return;
+            if (this.owner == null) return;
+
+            net.minecraft.world.phys.Vec3 look = this.owner.getLookAngle().normalize();
+            net.minecraft.world.phys.Vec3 right = look.cross(new net.minecraft.world.phys.Vec3(0.0, 1.0, 0.0));
+            if (right.lengthSqr() < 1.0E-6) {
+                right = new net.minecraft.world.phys.Vec3(1.0, 0.0, 0.0);
+            } else {
+                right = right.normalize();
+            }
+
+            net.minecraft.world.phys.Vec3 sideA = this.owner.position().add(right.scale(6.0)).add(look.scale(-2.0));
+            net.minecraft.world.phys.Vec3 sideB = this.owner.position().add(right.scale(-6.0)).add(look.scale(-2.0));
+            net.minecraft.world.phys.Vec3 chosen = this.turret.distanceToSqr(sideA.x, sideA.y, sideA.z)
+                    > this.turret.distanceToSqr(sideB.x, sideB.y, sideB.z) ? sideA : sideB;
+
+            BlockPos pos = new BlockPos((int)chosen.x, (int)this.owner.getY(), (int)chosen.z);
+            int safeY = this.turret.findSafeY(pos);
+            if (safeY == -999) {
+                return;
+            }
+
+            this.turret.moveTo(chosen.x, safeY, chosen.z, this.turret.getYRot(), this.turret.getXRot());
+            this.turret.getNavigation().stop();
+            this.turret.setTeleportCooldown(this.turret.getMaxTeleportCooldown());
+            this.turret.notifyTeleport();
+        }
     }
 
     // ==========================================

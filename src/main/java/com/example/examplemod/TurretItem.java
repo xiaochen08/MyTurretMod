@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.MobSpawnType;
@@ -33,6 +34,9 @@ public class TurretItem extends Item {
         BlockPos pos = context.getClickedPos();
         Direction direction = context.getClickedFace();
         BlockPos spawnPos = pos.relative(direction);
+        if (context.getPlayer() instanceof ServerPlayer serverPlayer && !ExampleMod.canSummonTurret(serverPlayer)) {
+            return InteractionResult.FAIL;
+        }
 
         SkeletonTurret turret = ExampleMod.TURRET_ENTITY.get().create(serverLevel);
         if (turret != null) {

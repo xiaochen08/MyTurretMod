@@ -113,9 +113,7 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
     }
 
     private void renderLegacyPrompt(GuiGraphics gfx, int x, int y, SkeletonTurret turret) {
-        String abilityTxt = turret.getNewAbilityDesc(turret.getLevel());
-        int txtWidth = this.font.width(abilityTxt);
-        gfx.drawString(this.font, abilityTxt, x + 145 - txtWidth / 2, y + 108, 0xFFFF5555, false);
+        // Legacy prompt intentionally hidden.
     }
 
     private void renderInfoBar(GuiGraphics gfx, int x, int y, SkeletonTurret turret) {

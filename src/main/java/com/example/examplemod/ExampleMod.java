@@ -92,6 +92,7 @@ public class ExampleMod {
     private static final Logger LOGGER = LogUtils.getLogger();
     static final int TURRET_TP_PERMISSION_LEVEL = 2;
     private static final long CAPTAIN_EVAL_INTERVAL_TICKS = 20L * 60L;
+    public static final int MAX_SUMMONED_TURRETS_PER_PLAYER = 12;
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "examplemod");
     public static final DeferredRegister<net.minecraft.world.level.block.Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, "examplemod");
@@ -702,6 +703,28 @@ public class ExampleMod {
 
     static boolean isCaptainEvaluationTick(long gameTime) {
         return gameTime > 0 && gameTime % CAPTAIN_EVAL_INTERVAL_TICKS == 0;
+    }
+
+    public static int countOwnedTurrets(ServerPlayer player) {
+        if (player == null) return 0;
+        ServerLevel level = player.serverLevel();
+        return level.getEntitiesOfClass(
+                SkeletonTurret.class,
+                player.getBoundingBox().inflate(4096.0),
+                t -> t.isAlive() && t.getOwnerUUID() != null && t.getOwnerUUID().equals(player.getUUID())
+        ).size();
+    }
+
+    public static boolean canSummonTurret(ServerPlayer player) {
+        if (player == null) return true;
+        int owned = countOwnedTurrets(player);
+        if (owned >= MAX_SUMMONED_TURRETS_PER_PLAYER) {
+            player.sendSystemMessage(Component.literal(
+                    "§c[系统] 召唤失败：你的骷髅数量已达上限（" + MAX_SUMMONED_TURRETS_PER_PLAYER + "）。"
+            ));
+            return false;
+        }
+        return true;
     }
 
     @SubscribeEvent
