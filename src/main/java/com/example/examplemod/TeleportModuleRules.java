@@ -52,4 +52,19 @@ public final class TeleportModuleRules {
         if (level <= 0) return "";
         return configByLevel(level).nameSuffix();
     }
+
+    /**
+     * Fall-damage reduction percent granted by teleport module level.
+     * Level 1 -> 50%, Level 5 -> 80%.
+     */
+    public static int fallDamageReductionPercentForLevel(int level) {
+        if (level <= 0) return 0;
+        return switch (clampLevel(level)) {
+            case 1 -> 50;
+            case 2 -> 58;
+            case 3 -> 65;
+            case 4 -> 73;
+            default -> 80;
+        };
+    }
 }

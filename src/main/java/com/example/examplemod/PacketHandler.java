@@ -53,6 +53,30 @@ public class PacketHandler {
                 .consumerMainThread(PacketSummonTerminalRenameResult::handle)
                 .add();
 
+        INSTANCE.messageBuilder(PacketMobileTerminalRequest.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(PacketMobileTerminalRequest::decode)
+                .encoder(PacketMobileTerminalRequest::encode)
+                .consumerMainThread(PacketMobileTerminalRequest::handle)
+                .add();
+
+        INSTANCE.messageBuilder(PacketMobileTerminalSnapshot.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(PacketMobileTerminalSnapshot::decode)
+                .encoder(PacketMobileTerminalSnapshot::encode)
+                .consumerMainThread(PacketMobileTerminalSnapshot::handle)
+                .add();
+
+        INSTANCE.messageBuilder(PacketMobileTerminalAction.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(PacketMobileTerminalAction::decode)
+                .encoder(PacketMobileTerminalAction::encode)
+                .consumerMainThread(PacketMobileTerminalAction::handle)
+                .add();
+
+        INSTANCE.messageBuilder(PacketMobileTerminalDelta.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(PacketMobileTerminalDelta::decode)
+                .encoder(PacketMobileTerminalDelta::encode)
+                .consumerMainThread(PacketMobileTerminalDelta::handle)
+                .add();
+
         INSTANCE.messageBuilder(PacketManualBookmarkUpdate.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .decoder(PacketManualBookmarkUpdate::decode)
                 .encoder(PacketManualBookmarkUpdate::encode)

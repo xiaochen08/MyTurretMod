@@ -99,6 +99,11 @@ public class TurretMenu extends AbstractContainerMenu {
         Slot slot = this.slots.get(index);
 
         if (slot != null && slot.hasItem()) {
+            // Keep installed modules stable against external "quick move" sort actions (e.g. IPN one-click sort).
+            if (index >= 5 && index < 10) {
+                return ItemStack.EMPTY;
+            }
+
             ItemStack itemstack1 = slot.getItem();
             itemstack = itemstack1.copy();
 

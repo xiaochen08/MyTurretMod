@@ -9,7 +9,6 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
 
 import java.util.ArrayList;
@@ -84,7 +83,7 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
 
         gfx.drawString(this.font, Component.translatable("gui.examplemod.tactical_terminal"), rightX, topY - 12, 0x404040, false);
 
-        String dmg = String.format("%.1f", turret.getAttributeValue(Attributes.ATTACK_DAMAGE));
+        String dmg = String.format("%.1f", turret.getWeaponDamage());
         gfx.drawString(this.font, Component.translatable("gui.examplemod.weapon_damage_value", dmg), rightX, topY, 0xFFFFAA00, false);
         gfx.drawString(this.font, Component.translatable("gui.examplemod.weapon_heat_value", turret.getHeat()), rightX, topY + gap, 0xFFFF5555, false);
 

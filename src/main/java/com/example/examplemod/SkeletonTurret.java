@@ -79,6 +79,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private double guardLockX, guardLockY, guardLockZ;
     private boolean guardLockValid = false;
     private boolean terminalTeleportOverride = false;
+    private boolean forceTerminalRecall = false;
     private long lastHeatStackTime = 0;
     private int consecutiveMisses = 0;   // 连续未造成伤害的次�?
     private int blockedSightTime = 0;    // 视线被遮挡的时间 (tick)
@@ -199,11 +200,15 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private int blackHoleActiveTicks = 0;
     private net.minecraft.world.phys.Vec3 blackHoleCenter = net.minecraft.world.phys.Vec3.ZERO;
     private boolean deathRecordDropped = false;
+    private TurretMobilityProfile mobilityProfile = TurretMobilityProfile.SCOUT_BOT;
 
     public final SimpleContainer inventory = new SimpleContainer(45);
 
     public SkeletonTurret(EntityType<? extends Skeleton> type, Level level) {
         super(type, level);
+        // 1.20.1 的 Mob 没有 createMoveControl 覆写点，这里在构造后替换控制器。
+        this.moveControl = this.createMoveControl();
+        this.refreshMobilityProfileFromTier();
         // �?监听背包变化，检测传送模�?
         this.inventory.addListener(new ContainerListener() {
             @Override
@@ -352,9 +357,24 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 .add(Attributes.MAX_HEALTH, 20.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.3)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 1.0)
-                .add(Attributes.ATTACK_DAMAGE, 4.0)
+                .add(Attributes.ATTACK_DAMAGE, 1.0)
                 .add(Attributes.ATTACK_SPEED, 1.0) // �?新增：基础攻速属�?(默认�?.0，即正常倍率)
+                // Step-height boost avoids stair/slab bunny-hopping and allows clean 1-block walk-up.
+                .add(net.minecraftforge.common.ForgeMod.STEP_HEIGHT_ADDITION.get(), TurretMobilityProfile.SCOUT_BOT.stepHeight())
+                .add(Attributes.JUMP_STRENGTH, TurretMobilityProfile.SCOUT_BOT.jumpStrength())
                 .add(Attributes.FOLLOW_RANGE, 256.0); // �?新增：把导航视野扩大�?256 格！
+    }
+
+
+    @Override
+    protected net.minecraft.world.entity.ai.navigation.PathNavigation createNavigation(Level level) {
+        // Replace vanilla navigator with smart gap-aware navigation.
+        return new SmartGroundPathNavigation(this, level, this::getMobilityProfile);
+    }
+
+    protected net.minecraft.world.entity.ai.control.MoveControl createMoveControl() {
+        // 1.20.1 has no createMoveControl override in Mob; constructor injects this control.
+        return new SmartMoveControl(this, this::getMobilityProfile);
     }
 
 
@@ -463,7 +483,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         // �?[修改] 移除热度伤害加成 (改用攻速流)
         // 伤害公式：基础4 + 等级*5
-        double dmg = (4.0 + (tier * 5.0));
+        double dmg = getWeaponDamageForTier(tier);
 
         arrow.setBaseDamage(Math.min(dmg, 200.0));
         int pierce = (tier == 5) ? 10 : (tier + 1);
@@ -1160,11 +1180,17 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     public void teleportToSafeSpotFromTerminal(LivingEntity owner) {
+        teleportToSafeSpotFromTerminal(owner, false);
+    }
+
+    public void teleportToSafeSpotFromTerminal(LivingEntity owner, boolean forceRecall) {
         this.terminalTeleportOverride = true;
+        this.forceTerminalRecall = forceRecall;
         try {
             teleportToSafeSpot(owner, false);
         } finally {
             this.terminalTeleportOverride = false;
+            this.forceTerminalRecall = false;
         }
     }
 
@@ -1173,13 +1199,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             return;
         }
         // 全局禁止：未安装模块无法传�?
-        if (!this.hasTeleportModule()) {
+        if (!this.hasTeleportModule() && !this.forceTerminalRecall) {
             if (owner instanceof Player player) {
                 player.displayClientMessage(Component.translatable("message.examplemod.teleport_module_missing"), true);
             }
             return;
         }
-        if (!this.canTeleport()) {
+        if (!this.canTeleport() && !this.forceTerminalRecall) {
             if (owner instanceof Player player) {
                 TeleportRequestGateway.notifyTeleportDeniedToOwner(this, player, this.getTeleportCooldown());
             }
@@ -1202,7 +1228,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             if (safeY != -999) {
                 this.moveTo(targetX, safeY, targetZ, this.getYRot(), this.getXRot());
                 this.getNavigation().stop();
-                this.setTeleportCooldown(this.getMaxTeleportCooldown());
+                if (!this.forceTerminalRecall) {
+                    this.setTeleportCooldown(this.getMaxTeleportCooldown());
+                }
                 this.notifyTeleport();
                 this.onTeleportCompleted(startPos, damageTriggered);
                 if (!this.isFollowing()) {
@@ -1310,6 +1338,16 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                     return super.hurt(source, amount);
                 }
                 return false; // 普通左键免疫误�?
+            }
+
+            // Teleport module passive: reduce fall damage by 50%-80% based on module level.
+            if (source.is(net.minecraft.world.damagesource.DamageTypes.FALL) && this.hasTeleportModule()) {
+                int tpLevel = Math.max(1, this.getTeleportModuleLevel());
+                int reductionPercent = TeleportModuleRules.fallDamageReductionPercentForLevel(tpLevel);
+                amount = amount * Math.max(0.0f, 1.0f - (reductionPercent / 100.0f));
+                if (amount <= 0.01f) {
+                    return false;
+                }
             }
 
             return super.hurt(source, amount);
@@ -1472,7 +1510,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         float speed = getFireRate();
 
         // 计算伤害
-        double dmg = (4.0 + (tier * 5.0));
+        double dmg = getWeaponDamageForTier(tier);
 
         String state = this.entityData.get(IS_FOLLOWING) ? "§a[机动模式]" : "§6[阵地模式]";
         boolean isBrutal = this.entityData.get(IS_BRUTAL);
@@ -2207,7 +2245,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         this.setHealth((float) maxHp);
 
         // 2. 攻击伤害 (4 + tier * 5)
-        double dmg = 4.0 + (tier * 5.0);
+        double dmg = getWeaponDamageForTier(tier);
         if (this.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
             this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(dmg);
         }
@@ -2217,6 +2255,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         if (this.getAttribute(Attributes.FOLLOW_RANGE) != null) {
             this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(range);
         }
+
+        // Keep physics in sync with profile after any tier/equipment recompute path.
+        this.refreshMobilityProfileFromTier();
     }
 
     public void incrementKillCount() {
@@ -2344,9 +2385,41 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public int getTier() {
         return this.entityData.get(TIER);
     }
+
+    private static double getWeaponDamageForTier(int tier) {
+        return 1.0 + (Math.max(0, tier) * 0.5);
+    }
+
+    public TurretMobilityProfile getMobilityProfile() {
+        return this.mobilityProfile;
+    }
+
+    private TurretMobilityProfile resolveMobilityProfileForTier(int tier) {
+        return tier >= 3 ? TurretMobilityProfile.HEAVY_MECH : TurretMobilityProfile.SCOUT_BOT;
+    }
+
+    private void refreshMobilityProfileFromTier() {
+        TurretMobilityProfile resolved = resolveMobilityProfileForTier(getTier());
+        this.mobilityProfile = resolved;
+        syncMobilityPhysicsAttributes(resolved);
+    }
+
+    private void syncMobilityPhysicsAttributes(TurretMobilityProfile profile) {
+        if (this.getAttribute(net.minecraftforge.common.ForgeMod.STEP_HEIGHT_ADDITION.get()) != null) {
+            this.getAttribute(net.minecraftforge.common.ForgeMod.STEP_HEIGHT_ADDITION.get()).setBaseValue(profile.stepHeight());
+        }
+        if (this.getAttribute(Attributes.JUMP_STRENGTH) != null) {
+            this.getAttribute(Attributes.JUMP_STRENGTH).setBaseValue(profile.jumpStrength());
+        }
+    }
+
     public void setTier(int tier) {
         this.entityData.set(TIER, tier);
+        if (this.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
+            this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(getWeaponDamageForTier(tier));
+        }
         this.updateRangeAttribute(); // Auto-update range
+        this.refreshMobilityProfileFromTier();
     }
 
     @Override
@@ -4209,6 +4282,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         return getTier() + 1;
     }
 
+    public double getWeaponDamage() {
+        return getWeaponDamageForTier(getTier());
+    }
+
     public int getXp() {
         return this.entityData.get(DATA_XP);
     }
@@ -4263,7 +4340,6 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
 
 }
-
 
 
 

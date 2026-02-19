@@ -35,6 +35,7 @@ public class TeleportUpgradeItem extends GenericTurretModuleItem {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         int moduleLevel = getLevel(stack);
         int cooldownSeconds = TeleportModuleRules.configByLevel(moduleLevel).teleportCooldownSeconds();
+        int fallReduction = TeleportModuleRules.fallDamageReductionPercentForLevel(moduleLevel);
         String cooldownText = String.format("%.1fs", (double) cooldownSeconds);
 
         tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.title", moduleLevel)
@@ -47,6 +48,10 @@ public class TeleportUpgradeItem extends GenericTurretModuleItem {
                 .withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.stability", "100%")
                 .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.fall_reduction", fallReduction)
+                .withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.fall_desc")
+                .withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC));
 
         tooltip.add(Component.empty());
         tooltip.add(Component.translatable("tooltip.examplemod.teleport_module.desc")

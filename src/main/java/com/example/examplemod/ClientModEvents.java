@@ -28,6 +28,7 @@ public class ClientModEvents {
         event.enqueueWork(() -> {
             MenuScreens.register(ExampleMod.TURRET_MENU.get(), TurretScreen::new);
             MenuScreens.register(ExampleMod.SUMMON_TERMINAL_MENU.get(), SummonTerminalScreen::new);
+            MenuScreens.register(ExampleMod.MOBILE_TERMINAL_MENU.get(), MobileTerminalScreen::new);
             ClientLanguageState.refreshFromClient();
         });
     }

@@ -60,7 +60,7 @@ public class TurretCommands {
         double z = DoubleArgumentType.getDouble(context, "z");
         player.teleportTo(x, y, z);
         TeleportRequestGateway.markPlayerCommandTeleport(player, TeleportRequestSource.PLAYER_PLAQUE);
-        context.getSource().sendSuccess(() -> Component.literal("\u5df2\u4f20\u9001\u5230\u6b7b\u4ea1\u94ed\u724c\u6389\u843d\u70b9"), false);
+        context.getSource().sendSuccess(() -> Component.literal("已传送到死亡铭牌掉落点"), false);
         return 1;
     }
 
@@ -75,7 +75,18 @@ public class TurretCommands {
     }
 
     private static int commandScavenge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
+        return executeScavenge(context.getSource().getPlayerOrException());
+    }
+
+    private static int commandRecall(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        return executeRecall(context.getSource().getPlayerOrException());
+    }
+
+    private static int commandPurge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        return executePurge(context.getSource().getPlayerOrException());
+    }
+
+    public static int executeScavenge(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
         List<SkeletonTurret> turrets = level.getEntitiesOfClass(
                 SkeletonTurret.class,
@@ -99,27 +110,25 @@ public class TurretCommands {
         return 1;
     }
 
-    private static int commandRecall(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
+    public static int executeRecall(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
-        List<SkeletonTurret> allTurrets = level.getEntitiesOfClass(
+        List<SkeletonTurret> followingTurrets = level.getEntitiesOfClass(
                 SkeletonTurret.class,
                 player.getBoundingBox().inflate(600.0),
-                t -> t.getOwnerUUID() != null && t.getOwnerUUID().equals(player.getUUID())
+                t -> t.getOwnerUUID() != null
+                        && t.getOwnerUUID().equals(player.getUUID())
+                        && t.isAlive()
+                        && t.isFollowing()
         );
 
         int count = 0;
-        for (SkeletonTurret t : allTurrets) {
-            if (!(t.isCaptain() || t.isSquadMember())) {
-                continue;
-            }
+        for (SkeletonTurret t : followingTurrets) {
             if (t.isPurgeActive()) t.stopPurgeMode();
             if (t.isCommandScavenging()) t.setCommandScavenging(false);
             if (t.isCommandRescue()) t.setCommandRescue(false);
 
             t.setTarget(null);
             t.getNavigation().stop();
-            if (!t.isFollowing()) t.setFollowing(true);
             t.teleportToSafeSpot(player);
             level.sendParticles(ParticleTypes.CLOUD, t.getX(), t.getY() + 1.0, t.getZ(), 5, 0.2, 0.2, 0.2, 0.05);
             count++;
@@ -133,8 +142,7 @@ public class TurretCommands {
         return 1;
     }
 
-    private static int commandPurge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player = context.getSource().getPlayerOrException();
+    public static int executePurge(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
         List<SkeletonTurret> squad = level.getEntitiesOfClass(
                 SkeletonTurret.class,
@@ -160,3 +168,4 @@ public class TurretCommands {
         return 1;
     }
 }
+

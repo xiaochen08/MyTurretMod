@@ -107,6 +107,7 @@ public class ExampleMod {
     public static final RegistryObject<Item> MULTI_SHOT_UPGRADE_MODULE = ITEMS.register("multi_shot_upgrade_module", () -> new MultiShotUpgradeModuleItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> DEATH_RECORD_ITEM = ITEMS.register("death_record_card", () -> new DeathRecordItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> PLAYER_MANUAL = ITEMS.register("player_manual", () -> new PlayerManualItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> NECRO_TERMINAL = ITEMS.register("necro_terminal", () -> new ItemMobileTerminal(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<net.minecraft.world.level.block.Block> SUMMON_TERMINAL_BLOCK = BLOCKS.register("summon_terminal",
             () -> new SummonTerminalBlock(net.minecraft.world.level.block.state.BlockBehaviour.Properties.copy(net.minecraft.world.level.block.Blocks.AMETHYST_BLOCK).lightLevel(state -> state.getValue(SummonTerminalBlock.LIT) ? 8 : 0)));
     public static final RegistryObject<Item> SUMMON_TERMINAL_ITEM = ITEMS.register("summon_terminal",
@@ -118,6 +119,8 @@ public class ExampleMod {
             () -> net.minecraftforge.common.extensions.IForgeMenuType.create(TurretMenu::new));
     public static final RegistryObject<net.minecraft.world.inventory.MenuType<SummonTerminalMenu>> SUMMON_TERMINAL_MENU = MENUS.register("summon_terminal_menu",
             () -> net.minecraftforge.common.extensions.IForgeMenuType.create(SummonTerminalMenu::new));
+    public static final RegistryObject<net.minecraft.world.inventory.MenuType<MobileTerminalMenu>> MOBILE_TERMINAL_MENU = MENUS.register("mobile_terminal_menu",
+            () -> net.minecraftforge.common.extensions.IForgeMenuType.create(MobileTerminalMenu::new));
     public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SummonTerminalBlockEntity>> SUMMON_TERMINAL_BE = BLOCK_ENTITY_TYPES.register(
             "summon_terminal",
             () -> net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(SummonTerminalBlockEntity::new, SUMMON_TERMINAL_BLOCK.get()).build(null)
@@ -237,6 +240,7 @@ public class ExampleMod {
             event.accept(DEATH_RECORD_ITEM);
             event.accept(PLAYER_MANUAL);
             event.accept(SUMMON_TERMINAL_ITEM);
+            event.accept(NECRO_TERMINAL);
 
             for (int level = 1; level <= TurretUpgradeTierPlan.maxLevel(); level++) {
                 ItemStack teleportStack = new ItemStack(TELEPORT_UPGRADE_MODULE.get());
@@ -548,35 +552,31 @@ public class ExampleMod {
         if (msg.equals("来") || msg.equals("过来") ||msg.equals("lai")||msg.equals("LAI")|| msg.equalsIgnoreCase("come")) {
             LOGGER.info("指令: 玩家 {} 请求绝对召回", player.getName().getString());
 
-            List<SkeletonTurret> allTurrets = level.getEntitiesOfClass(SkeletonTurret.class,
-                    player.getBoundingBox().inflate(600.0), // 范围足够大
-                    t -> t.getOwnerUUID() != null && t.getOwnerUUID().equals(player.getUUID())
+            List<SkeletonTurret> followingTurrets = level.getEntitiesOfClass(SkeletonTurret.class,
+                    player.getBoundingBox().inflate(600.0), // Keep a large recall radius.
+                    t -> t.getOwnerUUID() != null
+                            && t.getOwnerUUID().equals(player.getUUID())
+                            && t.isAlive()
+                            && t.isFollowing()
             );
 
             int count = 0;
-            for (SkeletonTurret t : allTurrets) {
-                // ✅ 筛选：只对队员生效 (队长+队员)
-                if (t.isCaptain() || t.isSquadMember()) {
+            for (SkeletonTurret t : followingTurrets) {
+                // Stop conflicting tactical modes before recall teleport.
+                if (t.isPurgeActive()) t.stopPurgeMode();
+                if (t.isCommandScavenging()) t.setCommandScavenging(false);
+                if (t.isCommandRescue()) t.setCommandRescue(false);
 
-                    // 1. 强制停止所有特殊模式
-                    if (t.isPurgeActive()) t.stopPurgeMode();
-                    if (t.isCommandScavenging()) t.setCommandScavenging(false);
-                    if (t.isCommandRescue()) t.setCommandRescue(false); // 假设你有这个getter/setter
+                // Clear combat and movement state.
+                t.setTarget(null);
+                t.getNavigation().stop();
 
-                    // 2. 强制停止战斗和移动
-                    t.setTarget(null);
-                    t.getNavigation().stop();
+                // Recall only already-following turrets.
+                t.teleportToSafeSpot(player);
 
-                    // 3. 强制开启跟随
-                    if (!t.isFollowing()) t.setFollowing(true);
-
-                    // 4. 执行传送
-                    t.teleportToSafeSpot(player);
-
-                    // 5. 特效
-                    level.sendParticles(ParticleTypes.CLOUD, t.getX(), t.getY() + 1.0, t.getZ(), 5, 0.2, 0.2, 0.2, 0.05);
-                    count++;
-                }
+                // Recall feedback particles.
+                level.sendParticles(ParticleTypes.CLOUD, t.getX(), t.getY() + 1.0, t.getZ(), 5, 0.2, 0.2, 0.2, 0.05);
+                count++;
             }
 
             if (count > 0) {
