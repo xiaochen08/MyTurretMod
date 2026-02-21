@@ -104,11 +104,8 @@ public class TurretScreen extends AbstractContainerScreen<TurretMenu> {
         String tpStatusKey = turret.hasTeleportModule() ? "gui.examplemod.state_on" : "gui.examplemod.state_off";
         gfx.drawString(this.font, Component.translatable("gui.examplemod.teleport_module_state", Component.translatable(tpStatusKey)), rightX, topY + gap * 5, 0xFFFFFFFF, false);
 
-        if (TurretConfig.getDisplayMode() == TurretConfig.DisplayMode.TRADITIONAL) {
-            renderLegacyPrompt(gfx, x, y, turret);
-        } else {
-            renderInfoBar(gfx, x, y, turret);
-        }
+        // Info bar rendering disabled to avoid covering inventory slots.
+        renderLegacyPrompt(gfx, x, y, turret);
     }
 
     private void renderLegacyPrompt(GuiGraphics gfx, int x, int y, SkeletonTurret turret) {
