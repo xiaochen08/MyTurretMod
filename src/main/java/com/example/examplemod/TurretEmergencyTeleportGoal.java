@@ -24,6 +24,7 @@ public class TurretEmergencyTeleportGoal extends Goal {
     @Override
     public boolean canUse() {
         if (turret.level().isClientSide) return false;
+        if (!turret.isFollowing()) return false;
         
         // Check for Teleport Module and Cooldown
         if (!turret.hasTeleportModule() || !turret.canTeleport()) return false;
@@ -68,10 +69,6 @@ public class TurretEmergencyTeleportGoal extends Goal {
         }
 
         teleportToPlayer();
-        
-        // Set cooldown
-        turret.setTeleportCooldown(turret.getMaxTeleportCooldown());
-        
         closeMonsterTime = 0; // Reset counter
     }
 
@@ -111,11 +108,21 @@ public class TurretEmergencyTeleportGoal extends Goal {
             pos.move(0, -1, 0);
         }
         
-        // Execute Teleport (use safe Y if found, otherwise stick to owner's Y)
-        turret.teleportTo(targetX, targetY, targetZ);
-        
+        // Execute through unified teleport gateway (emergency teleport does not spawn black hole)
+        final double teleportY = targetY;
+        boolean success = TeleportRequestGateway.guardTurretTeleport(
+                turret,
+                TeleportRequestSource.TURRET_EMERGENCY,
+                false,
+                () -> turret.randomTeleport(targetX, teleportY, targetZ, true)
+        );
+        if (!success) {
+            return;
+        }
+
         // 3. Post-teleport effects
-        turret.notifyTeleport(); // This will handle invulnerability and attack delay
+        turret.notifyTeleport();
+        turret.onTeleportCompleted(startPos, false);
         
         // 4. Log
         System.out.printf("[TurretLog] Time=%d, Reason=Emergency, Start=[%.2f, %.2f, %.2f], End=[%.2f, %.2f, %.2f], TriggerEntityID=%d%n",

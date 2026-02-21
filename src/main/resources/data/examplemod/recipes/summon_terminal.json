@@ -1,0 +1,23 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "   ",
+    "RTR",
+    " G "
+  ],
+  "key": {
+    "R": {
+      "item": "minecraft:redstone_torch"
+    },
+    "T": {
+      "item": "minecraft:glowstone"
+    },
+    "G": {
+      "item": "minecraft:redstone_block"
+    }
+  },
+  "result": {
+    "item": "examplemod:summon_terminal",
+    "count": 1
+  }
+}

@@ -49,7 +49,7 @@ public class ClientForgeEvents {
         Matrix4f matrix4f = poseStack.last().pose();
         int packedLightCoords = 0xF000F0; // 满亮度
 
-        Component textComp = Component.literal(status);
+        Component textComp = TurretTextResolver.resolveOverheadStatus(status);
         float xOffset = (float)(-font.width(textComp) / 2);
 
         // 关闭深度测试 (透视)

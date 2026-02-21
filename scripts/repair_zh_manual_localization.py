@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+import json
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+ZH_PATH = ROOT / "src" / "main" / "resources" / "assets" / "examplemod" / "lang" / "zh_cn.json"
+
+
+TRANSLATIONS = {
+    "manual.examplemod.title": "作战玩家手册",
+    "manual.examplemod.version": "v%s",
+    "manual.examplemod.search_hint": "搜索物品、系统、常见问题...",
+    "manual.examplemod.bookmarks_only": "仅看书签",
+    "manual.examplemod.empty": "没有匹配章节，请尝试其他关键词。",
+    "manual.examplemod.usage_header": "使用场景",
+    "manual.examplemod.faq_header": "常见问题",
+    "manual.examplemod.section.all": "全部",
+    "manual.examplemod.section.basic": "基础介绍",
+    "manual.examplemod.section.skeleton": "骷髅系统",
+    "manual.examplemod.section.items": "物品百科",
+    "manual.examplemod.section.upgrade": "升级百科",
+    "manual.examplemod.section.advanced": "进阶指南",
+    "manual.examplemod.entry.basic_start.title": "入门开始",
+    "manual.examplemod.entry.basic_start.summary": "进入新世界后的首要目标。",
+    "manual.examplemod.entry.basic_start.body": "本模组提供战斗骷髅盟友与控制工具。先用法杖部署第一台炮塔，再按地形在跟随与守卫模式之间切换。终端是你的中枢控制方块，用于查看小队状态与执行召回。",
+    "manual.examplemod.entry.basic_start.usage": "建议先搭建庇护所，先召唤 1-2 个骷髅，在开阔地测试移动稳定性，再进入洞穴。",
+    "manual.examplemod.entry.basic_start.faq": "问：我把手册弄丢了怎么办？答：重新进入世界/服务器后会自动检查并补发。",
+    "manual.examplemod.entry.basic_controls.title": "核心操作",
+    "manual.examplemod.entry.basic_controls.summary": "快速指挥骷髅小队的基础方法。",
+    "manual.examplemod.entry.basic_controls.body": "大部分交互以右键为主：用法杖在方块上部署炮塔，对炮塔交互管理模式和装备，打开终端进行批量控制。",
+    "manual.examplemod.entry.basic_controls.usage": "建议把指令物品放在快捷栏 1-3 位，便于在挖矿、战斗、召回间快速切换。",
+    "manual.examplemod.entry.basic_controls.faq": "问：为什么指令响应有延迟？答：高负载战斗中 AI 与寻路会排队，稍等一拍再操作。",
+    "manual.examplemod.entry.skeleton_follow.title": "跟随模式",
+    "manual.examplemod.entry.skeleton_follow.summary": "适合移动探索和主动战斗。",
+    "manual.examplemod.entry.skeleton_follow.body": "跟随模式下，骷髅会优先贴近主人，并使用机动逻辑缩短距离和保持队形。",
+    "manual.examplemod.entry.skeleton_follow.usage": "探索地表或跨生物群系时用跟随模式；固定防守点建议切守卫模式。",
+    "manual.examplemod.entry.skeleton_follow.faq": "问：为什么它们不是每次都传送？答：传送需要安装传送模块且冷却就绪。",
+    "manual.examplemod.entry.skeleton_guard.title": "守卫模式",
+    "manual.examplemod.entry.skeleton_guard.summary": "驻守原地并防御区域。",
+    "manual.examplemod.entry.skeleton_guard.body": "守卫模式会让单位保持位置，避免围堵玩家，适合基地防守、隘口控场与矿道警戒。",
+    "manual.examplemod.entry.skeleton_guard.usage": "在狭窄矿道作业前，将附近单位切到守卫模式可减少卡位。",
+    "manual.examplemod.entry.skeleton_guard.faq": "问：守卫状态还能攻击吗？答：可以，范围内仍会攻击敌对目标。",
+    "manual.examplemod.entry.skeleton_captain.title": "队长系统",
+    "manual.examplemod.entry.skeleton_captain.summary": "队长按固定周期评估。",
+    "manual.examplemod.entry.skeleton_captain.body": "队长评估现在按 60 秒周期执行。在周期内即使成员状态波动也不会立刻切换，可减少界面与逻辑抖动。",
+    "manual.examplemod.entry.skeleton_captain.usage": "若你刚给成员做了更高等级强化，请等下一次评估周期完成队长交接。",
+    "manual.examplemod.entry.skeleton_captain.faq": "问：为什么不是立刻换队长？答：这是为了避免频繁切换导致的不稳定体验。",
+    "manual.examplemod.entry.item_wand.title": "毁灭炮塔法杖",
+    "manual.examplemod.entry.item_wand.summary": "部署核心道具。",
+    "manual.examplemod.entry.item_wand.body": "合成：纵向配方（上腐肉、中黑曜石、下铁块）。获取：工作台合成、创造标签页、开局发放。升级：该物品本体无等级，成长来自召唤单位和模块。",
+    "manual.examplemod.entry.item_wand.usage": "用途：右键方块面部署绑定你的骷髅炮塔单位。",
+    "manual.examplemod.entry.item_wand.faq": "问：为什么部署失败？答：生成位置被阻挡或不满足实体放置条件。",
+    "manual.examplemod.entry.item_glitch_chip.title": "故障芯片",
+    "manual.examplemod.entry.item_glitch_chip.summary": "恢复与重建消耗品。",
+    "manual.examplemod.entry.item_glitch_chip.body": "合成：当前无公开合成配方。获取：创造标签页与炮塔打印/回收流程掉落。升级：无直接等级，但使用有品质分层，消耗钻石可必定恢复，消耗铁锭为概率恢复。",
+    "manual.examplemod.entry.item_glitch_chip.usage": "用途：背包中有指定材料时右键，尝试恢复数据并重建法杖。",
+    "manual.examplemod.entry.item_glitch_chip.faq": "问：为什么不能使用？答：背包里至少需要 1 个钻石或铁锭。",
+    "manual.examplemod.entry.item_terminal.title": "召唤终端",
+    "manual.examplemod.entry.item_terminal.summary": "小队控制中枢面板。",
+    "manual.examplemod.entry.item_terminal.body": "合成：第二行 红石火把+荧石+红石火把，第三行中间 红石块。获取：工作台合成与创造标签页。升级：终端方块本体无等级，但可控制已升级单位和模块。",
+    "manual.examplemod.entry.item_terminal.usage": "用途：放置后右键打开列表，查看状态、召回、重命名与队伍管理。",
+    "manual.examplemod.entry.item_terminal.faq": "问：为什么召回按钮不可用？答：目标单位未安装传送模块或不满足传送条件。",
+    "manual.examplemod.entry.item_tp_module.title": "传送升级模块",
+    "manual.examplemod.entry.item_tp_module.summary": "解锁传送与召回能力。",
+    "manual.examplemod.entry.item_tp_module.body": "合成：纵向配方（上青金石块、中末影珍珠、下红石块）。获取：工作台合成与创造标签页。升级：支持 Lv1-Lv5，可通过铁砧升级；高等级会增强模块规则效果。",
+    "manual.examplemod.entry.item_tp_module.usage": "用途：安装到炮塔模块槽位，启用传送相关逻辑。",
+    "manual.examplemod.entry.item_tp_module.faq": "问：为什么没有传送？答：请检查模块安装状态、冷却与安全落点。",
+    "manual.examplemod.entry.item_multishot_module.title": "多重射击模块",
+    "manual.examplemod.entry.item_multishot_module.summary": "提升远程齐射输出。",
+    "manual.examplemod.entry.item_multishot_module.body": "合成：纵向配方（上紫水晶碎片、中弓、下线）。获取：工作台合成与创造标签页。升级：支持 Lv1-Lv5，可通过铁砧升级；高等级提升齐射规模与规则加成。",
+    "manual.examplemod.entry.item_multishot_module.usage": "用途：安装后用于群战与多目标压制。",
+    "manual.examplemod.entry.item_multishot_module.faq": "问：会替代传送模块吗？答：不会，两者承担不同战术角色。",
+    "manual.examplemod.entry.item_core_module_example.title": "战术中枢模块（示例）",
+    "manual.examplemod.entry.item_core_module_example.summary": "仅用于手册展示的第 5 个配方卡。",
+    "manual.examplemod.entry.item_core_module_example.body": "合成：该配方为手册 UI 的扩展示例，用于展示第五个完整 3x3 案例；默认数据包未注册。",
+    "manual.examplemod.entry.item_core_module_example.usage": "用途：作为未来模块融合合成的视觉模板。",
+    "manual.examplemod.entry.item_core_module_example.faq": "问：为什么生存模式无法合成？答：此条目是手册示例，不是当前实装配方。",
+    "manual.examplemod.entry.item_death_plaque.title": "死亡铭牌",
+    "manual.examplemod.entry.item_death_plaque.summary": "记录阵亡单位快照的卡片。",
+    "manual.examplemod.entry.item_death_plaque.body": "合成：无合成配方。获取：炮塔死亡时必定掉落。升级：无物品等级；数据完整度取决于死亡时记录状态。",
+    "manual.examplemod.entry.item_death_plaque.usage": "用途：右键目标位置，恢复铭牌中记录的单位。",
+    "manual.examplemod.entry.item_death_plaque.faq": "问：为什么有些运行态信息缺失？答：部分瞬时战斗状态被有意排除。",
+    "manual.examplemod.entry.item_player_manual.title": "玩家作战手册",
+    "manual.examplemod.entry.item_player_manual.summary": "可检索的游戏内文档。",
+    "manual.examplemod.entry.item_player_manual.body": "合成：工作台配方为中间任意木板、右侧原石。获取：可合成；首次登录若缺失会自动发放，创造标签页也可获取。升级：登录时进行版本同步，手册结构更新后会自动升级现有手册。",
+    "manual.examplemod.entry.item_player_manual.usage": "用途：右键打开分区指南，支持搜索与书签。",
+    "manual.examplemod.entry.item_player_manual.faq": "问：如何同步最新手册内容？答：重新进入世界/服务器触发版本检查。",
+    "manual.examplemod.entry.upgrade_module_path.title": "模块升级流程",
+    "manual.examplemod.entry.upgrade_module_path.summary": "铁砧升级路径的图形化说明。",
+    "manual.examplemod.entry.upgrade_module_path.body": "传送模块和多重射击模块都遵循同一升级逻辑：模块本体 + 阶段材料 + 铁砧操作，得到下一等级模块。",
+    "manual.examplemod.entry.upgrade_module_path.usage": "用途：先确认目标模块等级，再按材料链顺序在铁砧执行升级。",
+    "manual.examplemod.entry.upgrade_module_path.faq": "问：为什么没有升级结果？答：通常是模块等级、材料阶位或铁砧状态不匹配。",
+    "manual.examplemod.entry.upgrade_quick_commands.title": "升级常用命令",
+    "manual.examplemod.entry.upgrade_quick_commands.summary": "用图标卡片展示调试/运维常用命令。",
+    "manual.examplemod.entry.upgrade_quick_commands.body": "本页展示与升级流程常配套的命令示例，包括发放模块和死亡铭牌坐标传送。",
+    "manual.examplemod.entry.upgrade_quick_commands.usage": "用途：在服务端或管理员环境下执行，先确认权限与参数正确。",
+    "manual.examplemod.entry.upgrade_quick_commands.faq": "问：为什么命令被拒绝？答：通常是权限等级不足或坐标/参数不合法。",
+    "manual.examplemod.entry.advanced_mining.title": "挖矿安全",
+    "manual.examplemod.entry.advanced_mining.summary": "减少狭窄矿道中的堵路问题。",
+    "manual.examplemod.entry.advanced_mining.body": "在 1-2 格矿道中，建议让附近单位守卫或保持距离。跟随 AI 现已包含挖矿避让逻辑，可降低你开采时的碰撞与阻挡。",
+    "manual.examplemod.entry.advanced_mining.usage": "支线挖矿时，建议一名单位后方守卫，一名单位远距跟随支援。",
+    "manual.examplemod.entry.advanced_mining.faq": "问：偶尔仍会挡路怎么办？答：转向后短暂停顿，给寻路重算留出时间。",
+    "manual.examplemod.entry.advanced_troubleshooting.title": "故障排查",
+    "manual.examplemod.entry.advanced_troubleshooting.summary": "常见问题与快速检查项。",
+    "manual.examplemod.entry.advanced_troubleshooting.body": "行为异常时，先检查所有者绑定、模式状态、模块安装、冷却和区块加载。大多数控制问题都来自这些状态之一。",
+    "manual.examplemod.entry.advanced_troubleshooting.usage": "先在终端查看单位 ID 与状态，再调整配置，定位会更快。",
+    "manual.examplemod.entry.advanced_troubleshooting.faq": "问：后续版本会继续扩展手册吗？答：会，章节提供器支持增量扩展。",
+}
+
+
+def main() -> int:
+    data = json.loads(ZH_PATH.read_text(encoding="utf-8"))
+    data.update(TRANSLATIONS)
+    ZH_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Updated {len(TRANSLATIONS)} manual localization keys in {ZH_PATH}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

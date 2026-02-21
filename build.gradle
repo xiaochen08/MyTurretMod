@@ -1,138 +1,1 @@
-buildscript {
-    repositories {
-        // 1. 优先使用阿里云镜像
-        maven { url 'https://maven.aliyun.com/repository/public/' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-
-        // 2. Forge 和 Minecraft 官方仓库
-        maven { url 'https://maven.minecraftforge.net' }
-
-        // 3. ✅ Parchment 仓库 (插件在这儿下载)
-        maven { url 'https://maven.parchmentmc.org' }
-
-    }
-    dependencies {
-        // 下载 ForgeGradle
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+'
-
-        // ✅ 下载 Librarian 插件 (用于解析 parchment 映射)
-        classpath 'org.parchmentmc:librarian:1.+'
-
-    }
-}
-
-plugins {
-    id 'eclipse'
-    id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-
-    // ❌ 重点：千万不要在这里写 parchment！
-    // ❌ id 'org.parchmentmc.librarian.forgegradle' version '1.+'  <-- 删掉这行，或者确保这里没有它
-}
-
-// ✅ 重点：在这里手动启用插件
-apply plugin: 'org.parchmentmc.librarian.forgegradle'
-apply plugin: 'net.minecraftforge.gradle' // ✅ 放在这里 apply
-apply plugin: 'eclipse'
-apply plugin: 'maven-publish'
-
-// 下面是你的版本号配置，保持不变...
-version = '1.0.0'
-group = 'com.example.examplemod'
-// ...
-
-version = '1.0.0'
-group = 'com.example.examplemod'
-base {
-    archivesName = 'examplemod'
-}
-
-// 强制使用 Java 17
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-
-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
-
-minecraft {
-    // ✅ 2. 依然使用 snapshot (GeckoLib 最爱)，配合阿里云下载
-    //mappings channel: 'official', version: '1.20.1'
-    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
-
-
-    copyIdeResources = true
-
-    runs {
-        client {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            // ✅ 关键：确保 GeckoLib 这种带有 Mixin 的模组能正常加载
-            property 'forge.enabledGameTestNamespaces', 'examplemod'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-
-            mods {
-                examplemod {
-                    source sourceSets.main
-                }
-            }
-        }
-        server {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                examplemod {
-                    source sourceSets.main
-                }
-            }
-        }
-    }
-}
-
-repositories {
-    // ✅ 3. 项目依赖也加上国内镜像
-    maven { url 'https://maven.aliyun.com/repository/public/' }
-    maven { url 'https://maven.aliyun.com/repository/central' }
-    maven { name = 'forge'; url = 'https://maven.minecraftforge.net' }
-
-    maven { url 'https://maven.parchmentmc.org' }
-}
-
-dependencies {
-    // 使用稳定版 Forge
-
-    minecraft 'net.minecraftforge:forge:1.20.1-47.1.3'
-
-
-
-
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-}
-
-// 这段代码负责把 gradle 中的变量注入到 mods.toml 中
-tasks.named('processResources', ProcessResources).configure {
-    var replaceProperties = [
-            minecraft_version   : "1.20.1",
-            minecraft_version_range: "[1.20.1, 1.21)",
-            forge_version       : "47.1.3",
-            forge_version_range : "[47,)",
-            loader_version_range: "[47,)",
-            mod_id              : "examplemod", // ✅ 确保这里定义了 mod_id
-            mod_name            : "My Turret Mod",
-            mod_license         : "MIT",
-            mod_version         : project.version,
-            mod_authors         : "YourName",
-            mod_description     : "Smart Golem mod."
-    ]
-
-    inputs.properties replaceProperties
-
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties
-    }
-}
+buildscript {    repositories {        // 1. 优先使用阿里云镜�?        maven { url 'https://maven.aliyun.com/repository/public/' }        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }        // 2. Forge �?Minecraft 官方仓库        maven { url 'https://maven.minecraftforge.net' }        // 3. �?Parchment 仓库 (插件在这儿下�?        maven { url 'https://maven.parchmentmc.org' }    }    dependencies {        // 下载 ForgeGradle        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+'        // �?下载 Librarian 插件 (用于解析 parchment 映射)        classpath 'org.parchmentmc:librarian:1.+'    }}plugins {    id 'eclipse'    id 'idea'    id 'maven-publish'    id 'net.minecraftforge.gradle' version '[6.0,6.2)'    // �?重点：千万不要在这里�?parchment�?    // �?id 'org.parchmentmc.librarian.forgegradle' version '1.+'  <-- 删掉这行，或者确保这里没有它}// ==========================================// ✅ 自动版本号迭代引擎// ==========================================def versionPropsFile = file('version.properties')def versionProps = new Properties()// 1. 如果没有记录文件，就新建一个，从 1 开始if (!versionPropsFile.canRead()) {    versionProps['BUILD_NUMBER'] = '1'    versionProps.store(versionPropsFile.newWriter(), null)}// 2. 读取当前的构建号versionProps.load(new FileInputStream(versionPropsFile))def currentBuildNumber = versionProps['BUILD_NUMBER'].toInteger()// 3. 告诉管家：每次执行编译前，把数字 +1 并保存task incrementBuildNumber {    doLast {        currentBuildNumber++        versionProps['BUILD_NUMBER'] = currentBuildNumber.toString()        versionProps.store(versionPropsFile.newWriter(), null)        println "🚀 版本号已自动升级为: ${currentBuildNumber}"    }}// 强制绑定：在处理 Java 代码前，先执行数字递增processResources.dependsOn incrementBuildNumbercompileJava.dependsOn incrementBuildNumber// ==========================================// �?重点：在这里手动启用插件apply plugin: 'org.parchmentmc.librarian.forgegradle'apply plugin: 'net.minecraftforge.gradle' // �?放在这里 applyapply plugin: 'eclipse'apply plugin: 'maven-publish'// 下面是你的版本号配置，保持不�?..version = '1.0.1'group = 'com.example.examplemod'// ...// ✨ 你的大版本号 (主版本.次版本)def baseVersion = "1.4.1"// ✨ 最终拼接：基础版本 + 自增构建号 (例如 1.0.5)version = "${baseVersion}.${currentBuildNumber}"group = 'com.example.examplemod'// 1. 定义你的模组大名和状态def myModName = "[骷髅炮台]SkeletonTurret-1.20.1-forge"def releaseType = "Beta" // 或者是 "Beta"base {    // 2. 让管家自动把它们拼起来！    archivesName = "${myModName}-${releaseType}"}// 强制使用 Java 17java.toolchain.languageVersion = JavaLanguageVersion.of(17)println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"minecraft {    // �?2. 依然使用 snapshot (GeckoLib 最�?，配合阿里云下载    //mappings channel: 'official', version: '1.20.1'    mappings channel: 'parchment', version: '2023.09.03-1.20.1'    copyIdeResources = true    runs {        client {            workingDirectory project.file('run')            property 'forge.logging.markers', 'REGISTRIES'            property 'forge.logging.console.level', 'debug'            // �?关键：确�?GeckoLib 这种带有 Mixin 的模组能正常加载            property 'forge.enabledGameTestNamespaces', 'examplemod'            property 'mixin.env.remapRefMap', 'true'            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"            mods {                examplemod {                    source sourceSets.main                }            }        }        server {            workingDirectory project.file('run')            property 'forge.logging.markers', 'REGISTRIES'            property 'forge.logging.console.level', 'debug'            mods {                examplemod {                    source sourceSets.main                }            }        }    }}repositories {    // �?3. 项目依赖也加上国内镜�?    maven { url 'https://maven.aliyun.com/repository/public/' }    maven { url 'https://maven.aliyun.com/repository/central' }    maven { name = 'forge'; url = 'https://maven.minecraftforge.net' }    maven { url 'https://maven.parchmentmc.org' }}dependencies {    // 使用稳定�?Forge    minecraft 'net.minecraftforge:forge:1.20.1-47.1.3'}tasks.withType(JavaCompile).configureEach {    options.encoding = 'UTF-8'}tasks.register('verifyEncodingHealth') {    group = 'verification'    description = 'Fails build if obvious mojibake text is found in critical UI/localization files.'    doLast {        def targets = [                file('src/main/resources/assets/examplemod/lang/en_us.json'),                file('src/main/resources/assets/examplemod/lang/zh_cn.json'),                file('src/main/java/com/example/examplemod/SummonTerminalScreen.java')        ].findAll { it.exists() }        def badPatterns = ['\uFFFD', '鍙', '鐢', '搂', 'Ã', 'æ']        def failures = []        targets.each { f ->            def txt = f.getText('UTF-8')            badPatterns.each { p ->                if (txt.contains(p)) {                    failures << "${f}: found suspicious sequence '${p}'"                }            }        }        if (!failures.isEmpty()) {            throw new GradleException("Encoding health check failed:\n" + failures.join('\n'))        }    }}// 这段代码负责�?gradle 中的变量注入�?mods.toml �?tasks.named('processResources', ProcessResources).configure {    var replaceProperties = [            minecraft_version   : "1.20.1",            minecraft_version_range: "[1.20.1, 1.21)",            forge_version       : "47.1.3",            forge_version_range : "[47,)",            loader_version_range: "[47,)",            mod_id              : "examplemod", // �?确保这里定义�?mod_id            mod_name            : "My Turret Mod",            mod_license         : "MIT",            mod_version         : project.version,            mod_authors         : "YourName",            mod_description     : "Smart Golem mod."    ]    inputs.properties replaceProperties    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {        expand replaceProperties    }}tasks.named('processResources').configure {    dependsOn tasks.named('verifyEncodingHealth')}tasks.register('checkZhCnManualLocalization', Exec) {    group = 'verification'    description = 'Verifies zh_cn manual localization is complete and not corrupted.'    commandLine 'python', 'scripts/verify_zh_cn_manual_localization.py'}tasks.register('checkLocalizationSystem', Exec) {    group = 'verification'    description = 'Verifies en_us / zh_cn localization parity, placeholder safety, and style guards.'    commandLine 'python', 'scripts/verify_localization_system.py'}tasks.named('processResources').configure {    dependsOn tasks.named('checkZhCnManualLocalization')    dependsOn tasks.named('checkLocalizationSystem')}

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "   ",
+    " S ",
+    " E "
+  ],
+  "key": {
+    "S": {
+      "item": "examplemod:summon_terminal"
+    },
+    "E": {
+      "item": "minecraft:emerald"
+    }
+  },
+  "result": {
+    "item": "examplemod:necro_terminal",
+    "count": 1
+  }
+}
+

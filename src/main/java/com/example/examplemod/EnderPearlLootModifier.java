@@ -19,6 +19,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Random;
 
 public class EnderPearlLootModifier extends LootModifier {
+    // Keep 40% of configured drop chance => 60% reduction.
+    private static final double ENDER_PEARL_DROP_RATE_SCALE = 0.8D;
     public static final Supplier<Codec<EnderPearlLootModifier>> CODEC = Suppliers.memoize(() ->
             RecordCodecBuilder.create(inst -> codecStart(inst).apply(inst, EnderPearlLootModifier::new)));
 
@@ -40,14 +42,15 @@ public class EnderPearlLootModifier extends LootModifier {
             return generatedLoot;
         }
 
-        // Get drop chance from Config
-        double chance = TurretConfig.COMMON.enderPearlDropChanceBase.get();
+        // Get drop chance from config and apply global 60% reduction.
+        double chance = TurretConfig.COMMON.enderPearlDropChanceBase.get() * ENDER_PEARL_DROP_RATE_SCALE;
+        chance = Math.max(0.0D, Math.min(1.0D, chance));
         // Optionally add bonus based on other factors if needed, but for now just base chance
-        
+
         if (random.nextDouble() < chance) {
             generatedLoot.add(new ItemStack(Items.ENDER_PEARL));
         }
-        
+
         return generatedLoot;
     }
 
