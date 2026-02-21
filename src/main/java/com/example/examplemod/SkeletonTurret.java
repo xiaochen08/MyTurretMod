@@ -78,6 +78,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     private double spawnX, spawnY, spawnZ;
     private double guardLockX, guardLockY, guardLockZ;
     private boolean guardLockValid = false;
+    private static final java.util.UUID FOLLOW_SPEED_BOOST_UUID = java.util.UUID.fromString("8e9a8a4c-30d2-4f45-b3f7-5b2f6e8a1c3d");
+    private static final double FOLLOW_SPEED_BOOST_MULTIPLIER = 0.40D; // +40%
+    private static final float GUARD_DAMAGE_TAKEN_MULTIPLIER = 0.40F; // -60% damage taken
     private boolean terminalTeleportOverride = false;
     private boolean forceTerminalRecall = false;
     private long lastHeatStackTime = 0;
@@ -331,6 +334,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 || this.entityData.get(IS_FOLLOWING) != shouldFollow;
         this.entityData.set(FOLLOW_MODE, shouldFollow);
         this.entityData.set(IS_FOLLOWING, shouldFollow);
+        refreshModeBuffs();
 
         // Guard mode should clear movement/target immediately to prevent stale behavior.
         if (!shouldFollow) {
@@ -349,6 +353,34 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         // Overhead squad badge visibility is tied to follow state.
         if (changed && !this.level().isClientSide) {
             updateCustomName();
+            LivingEntity owner = this.getOwner();
+            if (owner instanceof Player player) {
+                if (shouldFollow) {
+                    player.displayClientMessage(
+                            Component.translatable("message.examplemod.mode.follow_active").withStyle(ChatFormatting.GREEN),
+                            true
+                    );
+                } else {
+                    player.displayClientMessage(
+                            Component.translatable("message.examplemod.mode.guard_active").withStyle(ChatFormatting.GOLD),
+                            true
+                    );
+                }
+            }
+        }
+    }
+
+    private void refreshModeBuffs() {
+        var speedAttr = this.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speedAttr == null) return;
+        speedAttr.removeModifier(FOLLOW_SPEED_BOOST_UUID);
+        if (this.entityData.get(IS_FOLLOWING)) {
+            speedAttr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                    FOLLOW_SPEED_BOOST_UUID,
+                    "Follow mode speed boost",
+                    FOLLOW_SPEED_BOOST_MULTIPLIER,
+                    net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL
+            ));
         }
     }
 
@@ -721,6 +753,20 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
             return;
         }
 
+        // 被 Carry On 等模组搬运时，暂停主动行为与战斗音效，避免交互期噪音和状态干扰。
+        if (!this.level().isClientSide && this.isPassenger()) {
+            this.getNavigation().stop();
+        this.setJumping(false);
+        this.setSprinting(false);
+        this.xxa = 0.0F;
+        this.yya = 0.0F;
+        this.zza = 0.0F;
+            this.setTarget(null);
+            this.setDeltaMovement(0.0, 0.0, 0.0);
+            this.guardLockValid = false;
+            return;
+        }
+
         if (!this.level().isClientSide && !this.isFollowing()) {
             enforceGuardFreeze();
         }
@@ -846,7 +892,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 boolean canSee = this.getSensing().hasLineOfSight(target);
                 if (!canSee) {
                     this.blockedSightTime++;
-                    if (this.blockedSightTime > 20 && this.blockedSightTime % 10 == 0) {
+                    if (this.isFollowing() && this.blockedSightTime > 20 && this.blockedSightTime % 10 == 0) {
                         this.getNavigation().moveTo(target, 1.2);
                     }
                     if (this.blockedSightTime > 60) {
@@ -1266,10 +1312,10 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     @Override
     public void setTarget(@Nullable LivingEntity target) {
+        if (target == this) {
+            return;
+        }
         super.setTarget(target);
-        if (target != null && target != this) {
-}
-        super.setTarget(target); // 别忘了保留这�?
     }
 
 
@@ -1350,7 +1396,19 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
                 }
             }
 
-            return super.hurt(source, amount);
+            // Guard mode exclusive buff: reduce incoming damage by 60%.
+            if (!this.isFollowing()) {
+                amount = amount * GUARD_DAMAGE_TAKEN_MULTIPLIER;
+                if (amount <= 0.01f) {
+                    return false;
+                }
+            }
+
+            boolean damaged = super.hurt(source, amount);
+            if (damaged && !this.isFollowing()) {
+                enforceGuardFreeze();
+            }
+            return damaged;
         } finally {
             this.hurtRecursionCounter--;
         }
@@ -1895,11 +1953,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
         Component finalName;
         if (this.entityData.get(IS_FOLLOWING)) {
-            String teamLabel = this.entityData.get(IS_CAPTAIN) ? "[队伍] �?" : "[队伍] ";
-            finalName = Component.literal(teamLabel)
-                    .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
-                    .append(baseName)
-                    .append(idText);
+            net.minecraft.network.chat.MutableComponent prefix =
+                    Component.literal("[\u961F\u4F0D] ").withStyle(ChatFormatting.AQUA);
+            if (this.entityData.get(IS_CAPTAIN)) {
+                // Captain marker must match tactical panel: yellow crown, captain-only.
+                prefix.append(Component.literal("\uD83D\uDC51 ").withStyle(ChatFormatting.GOLD));
+            }
+            finalName = prefix.append(baseName).append(idText);
         } else {
             finalName = Component.translatable("name.examplemod.turret.default", baseName, idText);
         }
@@ -1940,7 +2000,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack item = player.getItemInHand(hand);
         if (player.isShiftKeyDown()) {
-            return super.mobInteract(player, hand);
+            // Shift 交互统一放行给 Carry On / 其他搬运模组，避免实体自身交互吞事件。
+            return InteractionResult.PASS;
         }
 
 
@@ -2114,6 +2175,15 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
         }
 
         return super.mobInteract(player, hand);
+    }
+
+    @Override
+    public InteractionResult interactAt(Player player, net.minecraft.world.phys.Vec3 hitVec, InteractionHand hand) {
+        if (player.isShiftKeyDown()) {
+            // 与 mobInteract 保持一致：潜行右键优先交给搬运模组。
+            return InteractionResult.PASS;
+        }
+        return super.interactAt(player, hitVec, hand);
     }
 
 
@@ -2617,6 +2687,31 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
 
     @Override protected boolean isSunBurnTick() { return false; }
 
+    // ==========================================
+    // ✅ 修复：修改生物属性，脱离亡灵判定 (兼容治疗模组)
+    // ==========================================
+    @Override
+    public net.minecraft.world.entity.MobType getMobType() {
+        // 将生物类型从 UNDEAD(亡灵) 改为 UNDEFINED(无属性/机械，类似铁傀儡)
+        // 这样所有的治疗法术、治愈营火等就会为它正常加血，而不是造成伤害。
+        return net.minecraft.world.entity.MobType.UNDEFINED;
+    }
+
+    // ==========================================
+    // ✅ 修复：保留机械体的毒素与饥饿免疫
+    // ==========================================
+    @Override
+    public boolean canBeAffected(net.minecraft.world.effect.MobEffectInstance effectInstance) {
+        net.minecraft.world.effect.MobEffect effect = effectInstance.getEffect();
+        // 既然不再是亡灵，我们需要手动让它免疫中毒和饥饿（因为它是一台机械）
+        if (effect == net.minecraft.world.effect.MobEffects.POISON ||
+            effect == net.minecraft.world.effect.MobEffects.HUNGER) {
+            return false;
+        }
+        // 其他状态效果走原版默认逻辑
+        return super.canBeAffected(effectInstance);
+    }
+
     @Override
     public void travel(net.minecraft.world.phys.Vec3 travelVector) {
         if (!this.isFollowing()) {
@@ -2676,12 +2771,6 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     @Override
     public void aiStep() {
         super.aiStep();
-        if (!this.level().isClientSide && !this.isFollowing()) {
-            enforceGuardFreeze();
-        }
-
-
-
         // 只在服务端执�?
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             net.minecraft.world.level.ChunkPos currentPos = this.chunkPosition();
@@ -3709,17 +3798,37 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton 
     }
 
     private void enforceGuardFreeze() {
-        this.getNavigation().stop();
-        this.setTarget(null);
+        // 兼容 Carry On：如果被搬运（成为乘客），则暂停锚定并重置家坐标
         if (this.isPassenger()) {
-            this.stopRiding();
+            this.guardLockValid = false;
+            return;
         }
+
+        this.getNavigation().stop();
+        this.setJumping(false);
+        this.setSprinting(false);
+        this.xxa = 0.0F;
+        this.yya = 0.0F;
+        this.zza = 0.0F;
+
+        // 删除或注释掉 this.setTarget(null); 以修复守卫模式不攻击的 Bug
+        // this.setTarget(null);
+
         if (!this.getPassengers().isEmpty()) {
             this.ejectPassengers();
         }
         this.setDeltaMovement(0.0, 0.0, 0.0);
         if (this.guardLockValid) {
-            this.setPos(this.guardLockX, this.guardLockY, this.guardLockZ);
+            // 兼容外部模组对实体位置的直接重定位（如 Carry On 放下后）
+            // 若与旧锚点偏移过大，认为是合法搬运并在新位置重新锚定，避免强制拉回旧坐标。
+            double lockDistSqr = this.distanceToSqr(this.guardLockX, this.guardLockY, this.guardLockZ);
+            if (lockDistSqr > 0.25D && this.getTarget() == null) {
+                this.guardLockX = this.getX();
+                this.guardLockY = this.getY();
+                this.guardLockZ = this.getZ();
+            } else {
+                this.setPos(this.guardLockX, this.guardLockY, this.guardLockZ);
+            }
         } else {
             this.guardLockX = this.getX();
             this.guardLockY = this.getY();

@@ -240,6 +240,8 @@
   "gui.examplemod.teleport_module_state": "传送模块: %s",
   "gui.examplemod.mode_follow_tooltip": "当前：跟随模式。点击切换至守卫模式。",
   "gui.examplemod.mode_guard_tooltip": "当前：守卫模式。点击切换至跟随模式。",
+  "message.examplemod.mode.follow_active": "[战术] 跟随模式已启用：移动速度 +40%（与守卫减伤互斥）",
+  "message.examplemod.mode.guard_active": "[战术] 守卫模式已启用：受伤 -60%（与跟随加速互斥）",
   "name.examplemod.turret.base_default": "先锋队员",
   "name.examplemod.turret.captain": "[队伍] * %s%s",
   "name.examplemod.turret.squad": "[队伍] %s%s",

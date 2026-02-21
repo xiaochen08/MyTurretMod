@@ -1,0 +1,10 @@
+﻿本次会话变更文件（可追溯）
+
+1. src/main/java/com/example/examplemod/SkeletonTurret.java
+2. src/main/java/com/example/examplemod/ExampleMod.java
+3. build.gradle（构建配置/版本号自动递增逻辑所在，玩家玩法无直接变更）
+4. version.properties（构建号递增）
+
+说明：
+- 本报告聚焦“本次会话内完成并已编译验证通过”的改动。
+- 工作区存在其他历史/并行改动文件，不在本次玩家公告范围内。

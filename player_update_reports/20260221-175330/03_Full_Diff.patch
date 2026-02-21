@@ -1,0 +1,855 @@
+﻿diff --git a/build.gradle b/build.gradle
+index 61c6aab..ab621ca 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,187 +1 @@
+-buildscript {
+-    repositories {
+-        // 1. 优先使用阿里云镜�?
+-        maven { url 'https://maven.aliyun.com/repository/public/' }
+-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+-
+-        // 2. Forge �?Minecraft 官方仓库
+-        maven { url 'https://maven.minecraftforge.net' }
+-
+-        // 3. �?Parchment 仓库 (插件在这儿下�?
+-        maven { url 'https://maven.parchmentmc.org' }
+-
+-    }
+-    dependencies {
+-        // 下载 ForgeGradle
+-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+'
+-
+-        // �?下载 Librarian 插件 (用于解析 parchment 映射)
+-        classpath 'org.parchmentmc:librarian:1.+'
+-
+-    }
+-}
+-
+-plugins {
+-    id 'eclipse'
+-    id 'idea'
+-    id 'maven-publish'
+-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+-
+-    // �?重点：千万不要在这里�?parchment�?
+-    // �?id 'org.parchmentmc.librarian.forgegradle' version '1.+'  <-- 删掉这行，或者确保这里没有它
+-}
+-
+-// �?重点：在这里手动启用插件
+-apply plugin: 'org.parchmentmc.librarian.forgegradle'
+-apply plugin: 'net.minecraftforge.gradle' // �?放在这里 apply
+-apply plugin: 'eclipse'
+-apply plugin: 'maven-publish'
+-
+-// 下面是你的版本号配置，保持不�?..
+-version = '1.0.1'
+-group = 'com.example.examplemod'
+-// ...
+-
+-version = '1.0.1'
+-group = 'com.example.examplemod'
+-base {
+-    archivesName = 'examplemod'
+-}
+-
+-// 强制使用 Java 17
+-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+-
+-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+-
+-minecraft {
+-    // �?2. 依然使用 snapshot (GeckoLib 最�?，配合阿里云下载
+-    //mappings channel: 'official', version: '1.20.1'
+-    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
+-
+-
+-    copyIdeResources = true
+-
+-    runs {
+-        client {
+-            workingDirectory project.file('run')
+-            property 'forge.logging.markers', 'REGISTRIES'
+-            property 'forge.logging.console.level', 'debug'
+-            // �?关键：确�?GeckoLib 这种带有 Mixin 的模组能正常加载
+-            property 'forge.enabledGameTestNamespaces', 'examplemod'
+-            property 'mixin.env.remapRefMap', 'true'
+-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+-
+-            mods {
+-                examplemod {
+-                    source sourceSets.main
+-                }
+-            }
+-        }
+-        server {
+-            workingDirectory project.file('run')
+-            property 'forge.logging.markers', 'REGISTRIES'
+-            property 'forge.logging.console.level', 'debug'
+-
+-            mods {
+-                examplemod {
+-                    source sourceSets.main
+-                }
+-            }
+-        }
+-    }
+-}
+-
+-repositories {
+-    // �?3. 项目依赖也加上国内镜�?
+-    maven { url 'https://maven.aliyun.com/repository/public/' }
+-    maven { url 'https://maven.aliyun.com/repository/central' }
+-    maven { name = 'forge'; url = 'https://maven.minecraftforge.net' }
+-
+-    maven { url 'https://maven.parchmentmc.org' }
+-}
+-
+-dependencies {
+-    // 使用稳定�?Forge
+-
+-    minecraft 'net.minecraftforge:forge:1.20.1-47.1.3'
+-
+-
+-
+-
+-}
+-
+-tasks.withType(JavaCompile).configureEach {
+-    options.encoding = 'UTF-8'
+-}
+-
+-tasks.register('verifyEncodingHealth') {
+-    group = 'verification'
+-    description = 'Fails build if obvious mojibake text is found in critical UI/localization files.'
+-    doLast {
+-        def targets = [
+-                file('src/main/resources/assets/examplemod/lang/en_us.json'),
+-                file('src/main/resources/assets/examplemod/lang/zh_cn.json'),
+-                file('src/main/java/com/example/examplemod/SummonTerminalScreen.java')
+-        ].findAll { it.exists() }
+-
+-        def badPatterns = ['\uFFFD', '鍙', '鐢', '搂', 'Ã', 'æ']
+-        def failures = []
+-
+-        targets.each { f ->
+-            def txt = f.getText('UTF-8')
+-            badPatterns.each { p ->
+-                if (txt.contains(p)) {
+-                    failures << "${f}: found suspicious sequence '${p}'"
+-                }
+-            }
+-        }
+-
+-        if (!failures.isEmpty()) {
+-            throw new GradleException("Encoding health check failed:\n" + failures.join('\n'))
+-        }
+-    }
+-}
+-
+-// 这段代码负责�?gradle 中的变量注入�?mods.toml �?
+-tasks.named('processResources', ProcessResources).configure {
+-    var replaceProperties = [
+-            minecraft_version   : "1.20.1",
+-            minecraft_version_range: "[1.20.1, 1.21)",
+-            forge_version       : "47.1.3",
+-            forge_version_range : "[47,)",
+-            loader_version_range: "[47,)",
+-            mod_id              : "examplemod", // �?确保这里定义�?mod_id
+-            mod_name            : "My Turret Mod",
+-            mod_license         : "MIT",
+-            mod_version         : project.version,
+-            mod_authors         : "YourName",
+-            mod_description     : "Smart Golem mod."
+-    ]
+-
+-    inputs.properties replaceProperties
+-
+-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+-        expand replaceProperties
+-    }
+-}
+-
+-tasks.named('processResources').configure {
+-    dependsOn tasks.named('verifyEncodingHealth')
+-}
+-
+-tasks.register('checkZhCnManualLocalization', Exec) {
+-    group = 'verification'
+-    description = 'Verifies zh_cn manual localization is complete and not corrupted.'
+-    commandLine 'python', 'scripts/verify_zh_cn_manual_localization.py'
+-}
+-
+-tasks.register('checkLocalizationSystem', Exec) {
+-    group = 'verification'
+-    description = 'Verifies en_us / zh_cn localization parity, placeholder safety, and style guards.'
+-    commandLine 'python', 'scripts/verify_localization_system.py'
+-}
+-
+-tasks.named('processResources').configure {
+-    dependsOn tasks.named('checkZhCnManualLocalization')
+-    dependsOn tasks.named('checkLocalizationSystem')
+-}
++buildscript {
+
+    repositories {
+
+        // 1. 优先使用阿里云镜�?
+
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+
+
+
+        // 2. Forge �?Minecraft 官方仓库
+
+        maven { url 'https://maven.minecraftforge.net' }
+
+
+
+        // 3. �?Parchment 仓库 (插件在这儿下�?
+
+        maven { url 'https://maven.parchmentmc.org' }
+
+
+
+    }
+
+    dependencies {
+
+        // 下载 ForgeGradle
+
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+'
+
+
+
+        // �?下载 Librarian 插件 (用于解析 parchment 映射)
+
+        classpath 'org.parchmentmc:librarian:1.+'
+
+
+
+    }
+
+}
+
+
+
+
+
+
+plugins {
+
+
+
+
+    id 'eclipse'
+
+    id 'idea'
+
+    id 'maven-publish'
+
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+
+
+
+    // �?重点：千万不要在这里�?parchment�?
+
+    // �?id 'org.parchmentmc.librarian.forgegradle' version '1.+'  <-- 删掉这行，或者确保这里没有它
+
+}
+
+// ==========================================
+// ✅ 自动版本号迭代引擎
+// ==========================================
+def versionPropsFile = file('version.properties')
+def versionProps = new Properties()
+
+// 1. 如果没有记录文件，就新建一个，从 1 开始
+if (!versionPropsFile.canRead()) {
+    versionProps['BUILD_NUMBER'] = '1'
+    versionProps.store(versionPropsFile.newWriter(), null)
+}
+
+// 2. 读取当前的构建号
+versionProps.load(new FileInputStream(versionPropsFile))
+def currentBuildNumber = versionProps['BUILD_NUMBER'].toInteger()
+
+// 3. 告诉管家：每次执行编译前，把数字 +1 并保存
+task incrementBuildNumber {
+    doLast {
+        currentBuildNumber++
+        versionProps['BUILD_NUMBER'] = currentBuildNumber.toString()
+        versionProps.store(versionPropsFile.newWriter(), null)
+        println "🚀 版本号已自动升级为: ${currentBuildNumber}"
+    }
+}
+// 强制绑定：在处理 Java 代码前，先执行数字递增
+processResources.dependsOn incrementBuildNumber
+compileJava.dependsOn incrementBuildNumber
+
+// ==========================================
+
+
+// �?重点：在这里手动启用插件
+
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
+
+apply plugin: 'net.minecraftforge.gradle' // �?放在这里 apply
+
+apply plugin: 'eclipse'
+
+apply plugin: 'maven-publish'
+
+
+
+// 下面是你的版本号配置，保持不�?..
+
+version = '1.0.1'
+
+group = 'com.example.examplemod'
+
+// ...
+
+
+
+// ✨ 你的大版本号 (主版本.次版本)
+def baseVersion = "1.4.0"
+
+// ✨ 最终拼接：基础版本 + 自增构建号 (例如 1.0.5)
+version = "${baseVersion}.${currentBuildNumber}"
+
+
+
+group = 'com.example.examplemod'
+
+base {
+
+    archivesName = 'examplemod'
+
+}
+
+
+
+// 强制使用 Java 17
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+
+
+minecraft {
+
+    // �?2. 依然使用 snapshot (GeckoLib 最�?，配合阿里云下载
+
+    //mappings channel: 'official', version: '1.20.1'
+
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
+
+
+
+
+
+    copyIdeResources = true
+
+
+
+    runs {
+
+        client {
+
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+
+            property 'forge.logging.console.level', 'debug'
+
+            // �?关键：确�?GeckoLib 这种带有 Mixin 的模组能正常加载
+
+            property 'forge.enabledGameTestNamespaces', 'examplemod'
+
+            property 'mixin.env.remapRefMap', 'true'
+
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+
+
+
+            mods {
+
+                examplemod {
+
+                    source sourceSets.main
+
+                }
+
+            }
+
+        }
+
+        server {
+
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+
+            property 'forge.logging.console.level', 'debug'
+
+
+
+            mods {
+
+                examplemod {
+
+                    source sourceSets.main
+
+                }
+
+            }
+
+        }
+
+    }
+
+}
+
+
+
+repositories {
+
+    // �?3. 项目依赖也加上国内镜�?
+
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+
+    maven { url 'https://maven.aliyun.com/repository/central' }
+
+    maven { name = 'forge'; url = 'https://maven.minecraftforge.net' }
+
+
+
+    maven { url 'https://maven.parchmentmc.org' }
+
+}
+
+
+
+dependencies {
+
+    // 使用稳定�?Forge
+
+
+
+    minecraft 'net.minecraftforge:forge:1.20.1-47.1.3'
+
+
+
+
+
+
+
+
+
+}
+
+
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('verifyEncodingHealth') {
+    group = 'verification'
+    description = 'Fails build if obvious mojibake text is found in critical UI/localization files.'
+    doLast {
+        def targets = [
+                file('src/main/resources/assets/examplemod/lang/en_us.json'),
+                file('src/main/resources/assets/examplemod/lang/zh_cn.json'),
+                file('src/main/java/com/example/examplemod/SummonTerminalScreen.java')
+        ].findAll { it.exists() }
+
+        def badPatterns = ['\uFFFD', '鍙', '鐢', '搂', 'Ã', 'æ']
+        def failures = []
+
+        targets.each { f ->
+            def txt = f.getText('UTF-8')
+            badPatterns.each { p ->
+                if (txt.contains(p)) {
+                    failures << "${f}: found suspicious sequence '${p}'"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Encoding health check failed:\n" + failures.join('\n'))
+        }
+    }
+}
+
+
+// 这段代码负责�?gradle 中的变量注入�?mods.toml �?
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+
+            minecraft_version   : "1.20.1",
+
+            minecraft_version_range: "[1.20.1, 1.21)",
+
+            forge_version       : "47.1.3",
+
+            forge_version_range : "[47,)",
+
+            loader_version_range: "[47,)",
+
+            mod_id              : "examplemod", // �?确保这里定义�?mod_id
+
+            mod_name            : "My Turret Mod",
+
+            mod_license         : "MIT",
+
+            mod_version         : project.version,
+
+            mod_authors         : "YourName",
+
+            mod_description     : "Smart Golem mod."
+
+    ]
+
+
+
+    inputs.properties replaceProperties
+
+
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}
+
+tasks.named('processResources').configure {
+    dependsOn tasks.named('verifyEncodingHealth')
+}
+
+tasks.register('checkZhCnManualLocalization', Exec) {
+    group = 'verification'
+    description = 'Verifies zh_cn manual localization is complete and not corrupted.'
+    commandLine 'python', 'scripts/verify_zh_cn_manual_localization.py'
+}
+
+tasks.register('checkLocalizationSystem', Exec) {
+    group = 'verification'
+    description = 'Verifies en_us / zh_cn localization parity, placeholder safety, and style guards.'
+    commandLine 'python', 'scripts/verify_localization_system.py'
+}
+
+tasks.named('processResources').configure {
+    dependsOn tasks.named('checkZhCnManualLocalization')
+    dependsOn tasks.named('checkLocalizationSystem')
+}
+\ No newline at end of file
+diff --git a/src/main/java/com/example/examplemod/ExampleMod.java b/src/main/java/com/example/examplemod/ExampleMod.java
+index 85f451c..de487c4 100644
+--- a/src/main/java/com/example/examplemod/ExampleMod.java
++++ b/src/main/java/com/example/examplemod/ExampleMod.java
+@@ -127,7 +127,8 @@ public class ExampleMod {
+     );
+ 
+     public static final RegistryObject<EntityType<SkeletonTurret>> TURRET_ENTITY = ENTITIES.register("skeleton_turret",
+-            () -> EntityType.Builder.of(SkeletonTurret::new, MobCategory.MONSTER)
++            // Carry On survival compatibility: avoid MONSTER category so default hostile-pickup gate does not block turret carry.
++            () -> EntityType.Builder.of(SkeletonTurret::new, MobCategory.CREATURE)
+                     .sized(0.6f, 1.99f)
+                     .clientTrackingRange(8)
+                     .build("skeleton_turret"));
+@@ -332,6 +333,7 @@ public class ExampleMod {
+         if (!data.contains("HasReceivedStarterKit_Final")) {
+             LOGGER.info("🎁 发放新手礼包给: {}", player.getName().getString());
+             player.getInventory().add(new ItemStack(TURRET_WAND.get(), 3));
++            player.getInventory().add(new ItemStack(NECRO_TERMINAL.get(), 1));
+             player.sendSystemMessage(Component.literal("§6[系统] §f欢迎指挥官！已发放 §b3x 毁灭守望者法杖 §f作为新地图初始资金。"));
+             player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+             data.putBoolean("HasReceivedStarterKit_Final", true);
+@@ -395,7 +397,7 @@ public class ExampleMod {
+             Entity target = hit.getEntity();
+             AbstractArrow arrow = (AbstractArrow) projectile;
+ 
+-            if (target == arrow.getOwner() || target instanceof SkeletonTurret || target instanceof Player) {
++            if (target == arrow.getOwner() || target instanceof SkeletonTurret || target instanceof Player || isGuardVillagerEntity(target)) {
+                 projectile.discard();
+                 event.setCanceled(true);
+                 return;
+@@ -736,6 +738,18 @@ public class ExampleMod {
+             if (life <= 0) event.getEntity().discard();
+             else event.getEntity().getPersistentData().putInt("LimitedLife", life);
+         }
++
++        // Guard Villagers <-> Turret hard stop: clear already-acquired hostile targets every tick.
++        if (event.getEntity() instanceof Mob mob) {
++            LivingEntity currentTarget = mob.getTarget();
++            if (currentTarget != null) {
++                boolean guardVsTurret = (isGuardVillagerEntity(mob) && currentTarget instanceof SkeletonTurret)
++                        || (mob instanceof SkeletonTurret && isGuardVillagerEntity(currentTarget));
++                if (guardVsTurret) {
++                    mob.setTarget(null);
++                }
++            }
++        }
+     }
+ 
+     @SubscribeEvent
+@@ -753,8 +767,8 @@ public class ExampleMod {
+         Entity victim = event.getEntity();
+         Entity attacker = event.getSource().getEntity();
+         if (attacker != null) {
+-            boolean isAttackerFriendly = attacker instanceof SkeletonTurret || attacker instanceof Player || attacker instanceof IronGolem || attacker.getPersistentData().getBoolean("IsFriendlyZombie") || attacker.getPersistentData().getBoolean("IsFriendlyCreeper");
+-            boolean isVictimFriendly = victim instanceof SkeletonTurret || victim instanceof Player || victim instanceof IronGolem || victim.getPersistentData().getBoolean("IsFriendlyZombie") || victim.getPersistentData().getBoolean("IsFriendlyCreeper");
++            boolean isAttackerFriendly = isAllianceFriendly(attacker);
++            boolean isVictimFriendly = isAllianceFriendly(victim);
+             if (isAttackerFriendly && isVictimFriendly) event.setCanceled(true);
+         }
+     }
+@@ -765,11 +779,28 @@ public class ExampleMod {
+         LivingEntity attacker = event.getEntity();
+         LivingEntity target = event.getNewTarget();
+         if (attacker == null || target == null) return;
+-        boolean isAttackerFriendly = attacker instanceof SkeletonTurret || attacker instanceof IronGolem || attacker instanceof Player || attacker.getPersistentData().getBoolean("IsFriendlyZombie") || attacker.getPersistentData().getBoolean("IsFriendlyCreeper");
+-        boolean isTargetFriendly = target instanceof SkeletonTurret || target instanceof IronGolem || target instanceof Player || target.getPersistentData().getBoolean("IsFriendlyZombie") || target.getPersistentData().getBoolean("IsFriendlyCreeper");
++        boolean isAttackerFriendly = isAllianceFriendly(attacker);
++        boolean isTargetFriendly = isAllianceFriendly(target);
+         if (isAttackerFriendly && isTargetFriendly) event.setNewTarget(null);
+     }
+ 
++    // Guard Villagers compatibility: treat all guardvillagers:* entities as allied to turrets.
++    private static boolean isGuardVillagerEntity(Entity entity) {
++        if (entity == null) return false;
++        net.minecraft.resources.ResourceLocation key = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
++        return key != null && "guardvillagers".equals(key.getNamespace());
++    }
++
++    private static boolean isAllianceFriendly(Entity entity) {
++        if (entity == null) return false;
++        return entity instanceof SkeletonTurret
++                || entity instanceof Player
++                || entity instanceof IronGolem
++                || isGuardVillagerEntity(entity)
++                || entity.getPersistentData().getBoolean("IsFriendlyZombie")
++                || entity.getPersistentData().getBoolean("IsFriendlyCreeper");
++    }
++
+ 
+ 
+ 
+@@ -1003,7 +1034,13 @@ public class ExampleMod {
+             String rankIcon = t.isCaptain() ? "§6👑" : (isDowned ? "§c⚠" : "§8▪");
+             String nameColor = isDowned ? "§c" : (t.isCaptain() ? "§6" : "§f"); // 队长名字加粗
+             // 获取纯净名字
+-            String rawName = t.getDisplayName().getString().replaceAll("§.", "").replace("[队伍]", "").replace("👑", "").trim();
++            String rawName = t.getDisplayName().getString()
++                    .replaceAll("§.", "")
++                    .replace("[队伍]", "")
++                    .replace("👑", "")
++                    .replace("\uFFFD", "")
++                    .trim();
++            if (rawName.startsWith("?")) rawName = rawName.substring(1).trim();
+             // 截断过长的名字
+             // ✅ 新增：这里砍一刀！如果名字里有 "#"，就把后面的编号全删掉
+             if (rawName.contains("#")) {
+diff --git a/src/main/java/com/example/examplemod/SkeletonTurret.java b/src/main/java/com/example/examplemod/SkeletonTurret.java
+index 47b8907..7bd11d0 100644
+--- a/src/main/java/com/example/examplemod/SkeletonTurret.java
++++ b/src/main/java/com/example/examplemod/SkeletonTurret.java
+@@ -78,6 +78,9 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+     private double spawnX, spawnY, spawnZ;
+     private double guardLockX, guardLockY, guardLockZ;
+     private boolean guardLockValid = false;
++    private static final java.util.UUID FOLLOW_SPEED_BOOST_UUID = java.util.UUID.fromString("8e9a8a4c-30d2-4f45-b3f7-5b2f6e8a1c3d");
++    private static final double FOLLOW_SPEED_BOOST_MULTIPLIER = 0.40D; // +40%
++    private static final float GUARD_DAMAGE_TAKEN_MULTIPLIER = 0.40F; // -60% damage taken
+     private boolean terminalTeleportOverride = false;
+     private boolean forceTerminalRecall = false;
+     private long lastHeatStackTime = 0;
+@@ -331,6 +334,7 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+                 || this.entityData.get(IS_FOLLOWING) != shouldFollow;
+         this.entityData.set(FOLLOW_MODE, shouldFollow);
+         this.entityData.set(IS_FOLLOWING, shouldFollow);
++        refreshModeBuffs();
+ 
+         // Guard mode should clear movement/target immediately to prevent stale behavior.
+         if (!shouldFollow) {
+@@ -349,6 +353,28 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+         // Overhead squad badge visibility is tied to follow state.
+         if (changed && !this.level().isClientSide) {
+             updateCustomName();
++            LivingEntity owner = this.getOwner();
++            if (owner instanceof Player player) {
++                if (shouldFollow) {
++                    player.displayClientMessage(Component.literal("§a[Tactical] Follow Mode active: Speed +40% (exclusive with Guard DR)"), true);
++                } else {
++                    player.displayClientMessage(Component.literal("§6[Tactical] Guard Mode active: Damage Taken -60% (exclusive with Follow Speed)"), true);
++                }
++            }
++        }
++    }
++
++    private void refreshModeBuffs() {
++        var speedAttr = this.getAttribute(Attributes.MOVEMENT_SPEED);
++        if (speedAttr == null) return;
++        speedAttr.removeModifier(FOLLOW_SPEED_BOOST_UUID);
++        if (this.entityData.get(IS_FOLLOWING)) {
++            speedAttr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
++                    FOLLOW_SPEED_BOOST_UUID,
++                    "Follow mode speed boost",
++                    FOLLOW_SPEED_BOOST_MULTIPLIER,
++                    net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL
++            ));
+         }
+     }
+ 
+@@ -721,6 +747,15 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+             return;
+         }
+ 
++        // 被 Carry On 等模组搬运时，暂停主动行为与战斗音效，避免交互期噪音和状态干扰。
++        if (!this.level().isClientSide && this.isPassenger()) {
++            this.getNavigation().stop();
++            this.setTarget(null);
++            this.setDeltaMovement(0.0, 0.0, 0.0);
++            this.guardLockValid = false;
++            return;
++        }
++
+         if (!this.level().isClientSide && !this.isFollowing()) {
+             enforceGuardFreeze();
+         }
+@@ -1350,6 +1385,14 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+                 }
+             }
+ 
++            // Guard mode exclusive buff: reduce incoming damage by 60%.
++            if (!this.isFollowing()) {
++                amount = amount * GUARD_DAMAGE_TAKEN_MULTIPLIER;
++                if (amount <= 0.01f) {
++                    return false;
++                }
++            }
++
+             return super.hurt(source, amount);
+         } finally {
+             this.hurtRecursionCounter--;
+@@ -1895,11 +1938,13 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+ 
+         Component finalName;
+         if (this.entityData.get(IS_FOLLOWING)) {
+-            String teamLabel = this.entityData.get(IS_CAPTAIN) ? "[队伍] �?" : "[队伍] ";
+-            finalName = Component.literal(teamLabel)
+-                    .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
+-                    .append(baseName)
+-                    .append(idText);
++            net.minecraft.network.chat.MutableComponent prefix =
++                    Component.literal("[\u961F\u4F0D] ").withStyle(ChatFormatting.AQUA);
++            if (this.entityData.get(IS_CAPTAIN)) {
++                // Captain marker must match tactical panel: yellow crown, captain-only.
++                prefix.append(Component.literal("\uD83D\uDC51 ").withStyle(ChatFormatting.GOLD));
++            }
++            finalName = prefix.append(baseName).append(idText);
+         } else {
+             finalName = Component.translatable("name.examplemod.turret.default", baseName, idText);
+         }
+@@ -1940,7 +1985,8 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+     public InteractionResult mobInteract(Player player, InteractionHand hand) {
+         ItemStack item = player.getItemInHand(hand);
+         if (player.isShiftKeyDown()) {
+-            return super.mobInteract(player, hand);
++            // Shift 交互统一放行给 Carry On / 其他搬运模组，避免实体自身交互吞事件。
++            return InteractionResult.PASS;
+         }
+ 
+ 
+@@ -2116,6 +2162,15 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+         return super.mobInteract(player, hand);
+     }
+ 
++    @Override
++    public InteractionResult interactAt(Player player, net.minecraft.world.phys.Vec3 hitVec, InteractionHand hand) {
++        if (player.isShiftKeyDown()) {
++            // 与 mobInteract 保持一致：潜行右键优先交给搬运模组。
++            return InteractionResult.PASS;
++        }
++        return super.interactAt(player, hitVec, hand);
++    }
++
+ 
+ 
+     // 执行升级
+@@ -2617,6 +2672,31 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+ 
+     @Override protected boolean isSunBurnTick() { return false; }
+ 
++    // ==========================================
++    // ✅ 修复：修改生物属性，脱离亡灵判定 (兼容治疗模组)
++    // ==========================================
++    @Override
++    public net.minecraft.world.entity.MobType getMobType() {
++        // 将生物类型从 UNDEAD(亡灵) 改为 UNDEFINED(无属性/机械，类似铁傀儡)
++        // 这样所有的治疗法术、治愈营火等就会为它正常加血，而不是造成伤害。
++        return net.minecraft.world.entity.MobType.UNDEFINED;
++    }
++
++    // ==========================================
++    // ✅ 修复：保留机械体的毒素与饥饿免疫
++    // ==========================================
++    @Override
++    public boolean canBeAffected(net.minecraft.world.effect.MobEffectInstance effectInstance) {
++        net.minecraft.world.effect.MobEffect effect = effectInstance.getEffect();
++        // 既然不再是亡灵，我们需要手动让它免疫中毒和饥饿（因为它是一台机械）
++        if (effect == net.minecraft.world.effect.MobEffects.POISON ||
++            effect == net.minecraft.world.effect.MobEffects.HUNGER) {
++            return false;
++        }
++        // 其他状态效果走原版默认逻辑
++        return super.canBeAffected(effectInstance);
++    }
++
+     @Override
+     public void travel(net.minecraft.world.phys.Vec3 travelVector) {
+         if (!this.isFollowing()) {
+@@ -3709,17 +3789,32 @@ public class SkeletonTurret extends net.minecraft.world.entity.monster.Skeleton
+     }
+ 
+     private void enforceGuardFreeze() {
+-        this.getNavigation().stop();
+-        this.setTarget(null);
++        // 兼容 Carry On：如果被搬运（成为乘客），则暂停锚定并重置家坐标
+         if (this.isPassenger()) {
+-            this.stopRiding();
++            this.guardLockValid = false;
++            return;
+         }
++
++        this.getNavigation().stop();
++
++        // 删除或注释掉 this.setTarget(null); 以修复守卫模式不攻击的 Bug
++        // this.setTarget(null);
++
+         if (!this.getPassengers().isEmpty()) {
+             this.ejectPassengers();
+         }
+         this.setDeltaMovement(0.0, 0.0, 0.0);
+         if (this.guardLockValid) {
+-            this.setPos(this.guardLockX, this.guardLockY, this.guardLockZ);
++            // 兼容外部模组对实体位置的直接重定位（如 Carry On 放下后）
++            // 若与旧锚点偏移过大，认为是合法搬运并在新位置重新锚定，避免强制拉回旧坐标。
++            double lockDistSqr = this.distanceToSqr(this.guardLockX, this.guardLockY, this.guardLockZ);
++            if (lockDistSqr > 0.25D && this.getTarget() == null) {
++                this.guardLockX = this.getX();
++                this.guardLockY = this.getY();
++                this.guardLockZ = this.getZ();
++            } else {
++                this.setPos(this.guardLockX, this.guardLockY, this.guardLockZ);
++            }
+         } else {
+             this.guardLockX = this.getX();
+             this.guardLockY = this.getY();

@@ -127,7 +127,8 @@ public class ExampleMod {
     );
 
     public static final RegistryObject<EntityType<SkeletonTurret>> TURRET_ENTITY = ENTITIES.register("skeleton_turret",
-            () -> EntityType.Builder.of(SkeletonTurret::new, MobCategory.MONSTER)
+            // Carry On survival compatibility: avoid MONSTER category so default hostile-pickup gate does not block turret carry.
+            () -> EntityType.Builder.of(SkeletonTurret::new, MobCategory.CREATURE)
                     .sized(0.6f, 1.99f)
                     .clientTrackingRange(8)
                     .build("skeleton_turret"));
@@ -332,6 +333,7 @@ public class ExampleMod {
         if (!data.contains("HasReceivedStarterKit_Final")) {
             LOGGER.info("🎁 发放新手礼包给: {}", player.getName().getString());
             player.getInventory().add(new ItemStack(TURRET_WAND.get(), 3));
+            player.getInventory().add(new ItemStack(NECRO_TERMINAL.get(), 1));
             player.sendSystemMessage(Component.literal("§6[系统] §f欢迎指挥官！已发放 §b3x 毁灭守望者法杖 §f作为新地图初始资金。"));
             player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
             data.putBoolean("HasReceivedStarterKit_Final", true);
@@ -395,7 +397,7 @@ public class ExampleMod {
             Entity target = hit.getEntity();
             AbstractArrow arrow = (AbstractArrow) projectile;
 
-            if (target == arrow.getOwner() || target instanceof SkeletonTurret || target instanceof Player) {
+            if (target == arrow.getOwner() || target instanceof SkeletonTurret || target instanceof Player || isGuardVillagerEntity(target)) {
                 projectile.discard();
                 event.setCanceled(true);
                 return;
@@ -736,6 +738,18 @@ public class ExampleMod {
             if (life <= 0) event.getEntity().discard();
             else event.getEntity().getPersistentData().putInt("LimitedLife", life);
         }
+
+        // Guard Villagers <-> Turret hard stop: clear already-acquired hostile targets every tick.
+        if (event.getEntity() instanceof Mob mob) {
+            LivingEntity currentTarget = mob.getTarget();
+            if (currentTarget != null) {
+                boolean guardVsTurret = (isGuardVillagerEntity(mob) && currentTarget instanceof SkeletonTurret)
+                        || (mob instanceof SkeletonTurret && isGuardVillagerEntity(currentTarget));
+                if (guardVsTurret) {
+                    mob.setTarget(null);
+                }
+            }
+        }
     }
 
     @SubscribeEvent
@@ -753,8 +767,8 @@ public class ExampleMod {
         Entity victim = event.getEntity();
         Entity attacker = event.getSource().getEntity();
         if (attacker != null) {
-            boolean isAttackerFriendly = attacker instanceof SkeletonTurret || attacker instanceof Player || attacker instanceof IronGolem || attacker.getPersistentData().getBoolean("IsFriendlyZombie") || attacker.getPersistentData().getBoolean("IsFriendlyCreeper");
-            boolean isVictimFriendly = victim instanceof SkeletonTurret || victim instanceof Player || victim instanceof IronGolem || victim.getPersistentData().getBoolean("IsFriendlyZombie") || victim.getPersistentData().getBoolean("IsFriendlyCreeper");
+            boolean isAttackerFriendly = isAllianceFriendly(attacker);
+            boolean isVictimFriendly = isAllianceFriendly(victim);
             if (isAttackerFriendly && isVictimFriendly) event.setCanceled(true);
         }
     }
@@ -765,9 +779,26 @@ public class ExampleMod {
         LivingEntity attacker = event.getEntity();
         LivingEntity target = event.getNewTarget();
         if (attacker == null || target == null) return;
-        boolean isAttackerFriendly = attacker instanceof SkeletonTurret || attacker instanceof IronGolem || attacker instanceof Player || attacker.getPersistentData().getBoolean("IsFriendlyZombie") || attacker.getPersistentData().getBoolean("IsFriendlyCreeper");
-        boolean isTargetFriendly = target instanceof SkeletonTurret || target instanceof IronGolem || target instanceof Player || target.getPersistentData().getBoolean("IsFriendlyZombie") || target.getPersistentData().getBoolean("IsFriendlyCreeper");
+        boolean isAttackerFriendly = isAllianceFriendly(attacker);
+        boolean isTargetFriendly = isAllianceFriendly(target);
         if (isAttackerFriendly && isTargetFriendly) event.setNewTarget(null);
+    }
+
+    // Guard Villagers compatibility: treat all guardvillagers:* entities as allied to turrets.
+    private static boolean isGuardVillagerEntity(Entity entity) {
+        if (entity == null) return false;
+        net.minecraft.resources.ResourceLocation key = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        return key != null && "guardvillagers".equals(key.getNamespace());
+    }
+
+    private static boolean isAllianceFriendly(Entity entity) {
+        if (entity == null) return false;
+        return entity instanceof SkeletonTurret
+                || entity instanceof Player
+                || entity instanceof IronGolem
+                || isGuardVillagerEntity(entity)
+                || entity.getPersistentData().getBoolean("IsFriendlyZombie")
+                || entity.getPersistentData().getBoolean("IsFriendlyCreeper");
     }
 
 
@@ -1003,7 +1034,13 @@ public class ExampleMod {
             String rankIcon = t.isCaptain() ? "§6👑" : (isDowned ? "§c⚠" : "§8▪");
             String nameColor = isDowned ? "§c" : (t.isCaptain() ? "§6" : "§f"); // 队长名字加粗
             // 获取纯净名字
-            String rawName = t.getDisplayName().getString().replaceAll("§.", "").replace("[队伍]", "").replace("👑", "").trim();
+            String rawName = t.getDisplayName().getString()
+                    .replaceAll("§.", "")
+                    .replace("[队伍]", "")
+                    .replace("👑", "")
+                    .replace("\uFFFD", "")
+                    .trim();
+            if (rawName.startsWith("?")) rawName = rawName.substring(1).trim();
             // 截断过长的名字
             // ✅ 新增：这里砍一刀！如果名字里有 "#"，就把后面的编号全删掉
             if (rawName.contains("#")) {

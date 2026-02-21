@@ -240,6 +240,8 @@
   "gui.examplemod.teleport_module_state": "Teleport Module: %s",
   "gui.examplemod.mode_follow_tooltip": "Current: Follow Mode. Click to switch to Guard Mode.",
   "gui.examplemod.mode_guard_tooltip": "Current: Guard Mode. Click to switch to Follow Mode.",
+  "message.examplemod.mode.follow_active": "[Tactical] Follow mode active: Move Speed +40% (exclusive with Guard DR)",
+  "message.examplemod.mode.guard_active": "[Tactical] Guard mode active: Damage Taken -60% (exclusive with Follow Speed)",
   "name.examplemod.turret.base_default": "Vanguard",
   "name.examplemod.turret.captain": "[Squad] * %s%s",
   "name.examplemod.turret.squad": "[Squad] %s%s",
